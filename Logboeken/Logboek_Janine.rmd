@@ -1,0 +1,175 @@
+---
+title: "Logboek_Janine"
+author: "Janine Postmus"
+date: "2026-05-08"
+output: html_document
+---
+
+Logboek van Janine Postmus  
+Aangemaakt op 04-05-2026  
+Project voor Omics, periode 8, studie bio-informatica  
+Projectgroep: Janine Postmus, Gea Bakker, Joris Deelstra, Nicole Bovenga  
+
+
+### Project 
+
+https://www.sciencedirect.com/science/article/pii/S2589004225016438?via%3Dihub  
+
+Github  
+
+https://github.com/Nikkieeex/Multi-omics_lypolysis_brown_adipocytes   
+
+ 
+
+#### Taakverdeling 
+
+Stappen moeten chronologisch:  
+
+1.  Artikel lezen: Multi-omics analysis of thermogenic lipolysis in brown adipocytes   
+2. Vectorize data (Joris)  
+Joris heeft alle data gedownload en we kijken naar welke bestanden nuttig zijn voor ons. Er zitten ook nog .raw data tussen en alle drie omics mogen nog gemapped worden tegen referentie genoom.   
+Wanneer deze eerste stap is afgerond gaat Joris een word document opstellen voor ons artikel.   
+3. Ieder een omics (Gea, Janine, Nicole)  
+ Transcriptomics: Gea  
+ Metabolomics: Janine  
+ Proteomics: Nicole  
+Hier duidt Tsjerk om 3 veranderingen.   
+Log transform, Goed kijken naar hoe de verdeling is. Kijk naar outliers en scheefheid  
+Normalize observations, Kijk naar samples dus horizontale rijen en normalize deze  
+Normalize features, Kijk naar features dus kolommen en normalize   
+
+
+### Inlezen artikel 04-05-2026 
+
+#### Multi-omics analysis of thermogenic lipolysis in brown adipocytes 
+
+Het artikel onderzoekt wat er gebeurt in bruine vetcellen wanneer thermogene lipolyse wordt opgewekt met norepinephrine, het onderzoek richt zich op het moleculaire deel waarbij 3 omics-lagen behandeld worden namelijk transcriptomics, proteomics en metabolomics. Het doel is naast de biologische kant om ook de methodologische manier te vergelijken. Ze vergelijken de beide manieren om multi-omics-data te integreren.   
+
+In het artikel wordt een tijdlijn gebruikt na een norepinephrine-stimulatie waarbij er duidelijke veranderingen zichtbaar zijn in de multi-omics. Voornamelijk arachidonzuur, downstream metabolieten, carnitines en TCA-cycle-metabolieten lijken belangrijk te zijn bij thermogene lipolyse. Er is een experimenteel ontwerp gemaakt waarbij er gebruik is gemaakt van immortalized murine brown preadipocytes. Deze cellen zijn gedifferentieerd tot bruine adipocyten en vervolgens gestimuleerd met 1 microliter norepinephrine. Er zijn voor alle drie de omics lagen monsters genomen op 0, 4 en 24 uur. Bij metabolomics zijn er extra tijdpunten meegenomen omdat de veranderingen op dit niveau sneller gaan. Hiervoor zijn de tijdpunten 30 minuten, 1, 2 en 8 uur extra toegevoegd. Per omics laag en tijdpunt zijn er 6 replicaten gebruikt.   
+
+Bij de data integratie na de analyse zijn de verschillende omics-lagen eerst apart bekeken voor de resultaten naast elkaar gelegd zijn.  De metabolomics-tijdreeks liet 3 duidelijke metabole toestanden zien. Op 0 uur is de baseline te zien, na 4 uur is er een actieve lipolyse waardoor er een acute metabole shift ontstond en na 24 uur is er sprake van een langdurige stimulatie.   
+
+Bij de proteome resultaten veranderde er visueel niet veel maar tijdens de differentiele analyse en clustering waren er wel functionele veranderingen te zien. Na 4 uur waren vooral eiwitten verhoogd die te maken hadden met mRNA-metabolisme, cellulaire stressrespons, immuunsysteemactiviteit, mitochondriale functies en lipid droplet-dynamiek. Bij 24 h waren vooral eiwitten verhoogd die te maken hadden met TCA-metabolisme, vetzuur-β-oxidatie, aminozuurmetabolisme en ketonlichaammetabolisme.   
+
+Bij de transcriptomics resultaten zijn er meerdere differentially expressed genes (DEG’s) gevonden. Sommige genen daalden over de hele tijdreeks zoals Ero1a, Sema3g, Egln3, Ffar4 en Tlcd3b. Deze zijn gelinkt aan vetmetabolisme, oxidoreductase-activiteit, PPARγ-regulatie, vrije-vetzuurreceptoren en stress/apoptose. Ucp1 was hoger geëxprimeerd na langdurige norepinephrine-stimulatie, passend bij thermogene activatie.   
+
+De vergelijking van de verschillende omics analyse suggereert dat vetzuren vrijkomen, carnitines helpen met het transport richting de mitochondrien, TCA- en energiemetabolisme reorganiseren alles, en de cellen schakelen tussen acute stressrespons en langdurige metabole aanpassing. Hierbij wordt benadrukt dat metabolomics snelle veranderingen laat zien terwijl transcriptomics en proteomics op andere tijdschalen reageren.   
+
+Er zijn nog meerdere data-analyses uitgevoerd om bijvoorbeeld de tijdpunten te scheiden van elkaar (DIABLO uit het R-package mixOmics). Ook is er gebruik gemaakt van MOFA, dit is een unsupervised factoranalyse voor multi-omics. Hierbij is een conservatief model met vie factoren gebruikt waarvan vooral factor 1 en 2 biologisch relevant waren. Hierbij kwamen opnieuw metabolieten naar voren die te maken hebben met cAMP-gerelateerde signaling, carnitines, glucose-6-phosphate, 2-oxovaleric acid, 3-methyl-2-oxopentanoate en vetzuurgebruik. Carnitines hadden verschillende tijdsprofielen, wat suggereert dat specifieke vetzuren anders worden gebruikt in acute versus langdurige lipolyse. Er is vervolgens een pathway analyse toegepast op de DIABLO en MOFA- resultaten en dit liet zien dat geintegreerde methoden beter gecoordineerde biologische responsen vangen dan losse omics-analyses.   
+
+Deze studie laat vooral zien dat thermogene lipolyse een multi-layer proces is. Hierbij laten de verschillende omics-analyses veel detail per laag aan. Geintegreerde methoden tonen gecoordineerde responsen. De auteurs benadrukken wel dat de studie in een immortalized cell line is gedaan waardoor de resultaten niet 1-op-1 naar bruine vetweefsels vertaald mogen worden.    
+
+#### Verdieping project 
+
+Om het project goed te kunnen aanvullen met een mogelijk nieuwe onderzoeksvraag is het belangrijk om te weten wat bepaalde dingen betekenen. Daarom ga ik mij hierin verdiepen.    
+
+#### Adaptieve thermogenese 
+
+Adaptieve thermogenese is een katabool proces waarbij energie-opslagmoleculen worden verbruikt. De energie wordt als warmte afgegeven als reactie op veranderingen in de omgeving. Dit proces vindt vooral plaats in bruin en beige vetweefsel. Thermogenese wordt gereguleerd door veel factoren, waaronder lipide-afgeleide paracriene en endocriene hormonen die lipokines worden genoemd. Thermogenese verwijst naar de productie van warmte om een optimale temperatuur te houden voor enzymatische reacties die essentieel zijn voor het in stand houden van leven. Deze warmteproductie draagt bij aan de energiehomeostase van het hele lichaam door chemische energie uit voedsel te gebruiken om warmte te genereren. Uiteindelijk leidt het thermogene proces tot veranderingen in de concentraties van energie-opslagmoleculen zoals glucose en lipiden, zowel in de circulatie als in de weefsels die deze moleculen opslaan of gebruiken.   
+
+ 
+#### Lipolyse  
+
+
+### EDA Metabolomics
+De verschillende omics lagen hebben we verdeeld onder elkaar zoals te lezen is in de inleiding.
+Ik heb de metabolomics data gesorteerd en gemapt gekregen van Joris. Dit is te vinden in: /students/2025-2026/Thema08/lipolyse/unpacked/metabolomics 
+
+
+#### Inladen data
+In deze R chunk laad ik alle libraries in zodat dit overzichtelijk bij elkaar staat.
+```{r inladen libraries, echo=FALSE, eval=FALSE}
+library(dplyr)
+library(readr)
+library(tidyr)
+```
+
+Ik ga eerst inventariseren welke bestanden bij elkaar horen omdat er gebruik is gemaakt van meerdere meetmethoden.  
+
+```{r overzicht maken, echo=TRUE, eval=FALSE}
+setwd("/students/2025-2026/Thema08/lipolyse/unpacked/metabolomics/")
+files <- list.files(pattern = "MTBLS12307")
+files
+
+```
+De bestanden zijn opgedeeld in assay, maf en sample files. deze ga ik van elkaar scheiden zodat ze makkelijker te gebruiken zijn.  
+
+```{r filesoorten scheiden, echo=TRUE, echo=FALSE}
+assay_files <- files[grepl("^a_", files)]
+maf_files   <- files[grepl("^m_", files)]
+sample_file <- files[grepl("^s_", files)]
+
+assay_files
+maf_files
+sample_file
+
+```
+Ik heb nu assay, maf en sample files. Het sample file bevat informatie over de samples zelf zoals sample naam, type, treatment etcetera. In de sample files staat de gemeten meatbolomics-data zoals bijvoorbeeld metaboliet-ID, intensiteit per sample en signaalsterkte. De assay bestanden bevatten de getallen waarmee ik de statistische analyses ga uitvoeren. Als laatste hebben we nog de maf files en dit betekent dat het een metabolite annotation file is. Hierin staaat dus informatie over de metabolieten zoals bijvoorbeeld de naam van de metaboliet, ID vanuit een database en chemische formule. 
+
+
+#### Sample file
+
+Ik ga nu het sample file inlezen om te kijken wat er allemaal in mijn data zit.
+```{r inlezen data, echo=TRUE, eval=FALSE}
+setwd("/students/2025-2026/Thema08/lipolyse/unpacked/metabolomics")
+
+sample_metadata <- read_tsv("s_MTBLS12307.txt")
+colnames(sample_metadata)
+```
+Omdat de kolomnamen onnodig lang en onleesbaar zijn ga ik deze aanpassen naar leesbaardere varianten en direct de belangrijkste kolommen eruit filteren.  
+
+```{r kolommen filteren, echo=TRUE, echo=FALSE}
+metadata_clean <- sample_metadata %>%
+  select(
+    sample_name = 'Sample Name',
+    variant = 'Characteristics[Variant]',
+    sample_type = 'Characteristics[Sample type]',
+    timepoint = 'Factor Value[Timepoint]',
+    time_unit = 'Unit',
+    treatment = 'Factor Value[Treatment]'
+  ) %>%
+  as.data.frame()
+
+head(metadata_clean)
+```
+De sample metadata bevat informatie over de biologische oorsprong van de samples, de variant, het sampletype, het tijdspunt en de behandeling. Voor de EDA zijn vooral Sample Name, Variant, Sample type, Timepoint, time unit en Treatment relevant, omdat deze gebruikt kunnen worden om samples te groeperen en te visualiseren in PCA-analyses en heatmaps.  
+
+#### EDA Assay files
+Ik ga beginnen met kijken wat er allemaal in de assay files zit om zo te bepalen welke statistische analyses ik kan uitvoeren. Ik ga per assay bestand een aantal dingen bepalen namelijk:  
+-Hoeveel rijen en kolommen heeft het bestand?\ 
+-Welke kolommen zijn metadata/feature-info?\ 
+-Welke kolommen zijn sample-intensiteiten?\ 
+-Hebben de kolommen de goede variabele?\ 
+-Zijn er missende waarden of rare kolommen?\ 
+
+```{r inlezen assay file 1, echo=TRUE, eval=FALSE}
+setwd("/students/2025-2026/Thema08/lipolyse/unpacked/metabolomics")
+
+assay_gc_pmp <- read_tsv(
+  "a_MTBLS12307_GC-MS_positive__metabolite_profiling.txt"
+)
+# de functie glimpse geeft compacte samenvatting over de inhoud van het file
+glimpse(assay_gc_pmp)
+head(assay_gc_pmp)
+```
+
+Omdat er 37 kolommen zijn wil ik ze overzichtelijker maken en direct scheiden tussen sample kolommen en feature informatie om te kijken of er nuttige informatie instaat. De functie n = Inf print alle rijen overzichtelijk in combinatie met de functie tibble. 
+
+```{r assay file 1, echo=TRUE, eval=FALSE}
+colnames_assay_1 <- tibble(
+  colnumber = seq_along(colnames(assay_gc_pmp)),
+  colname = colnames(assay_gc_pmp)
+)
+
+print(colnames_assay_1, n = Inf)
+```
+Omdat een metabolieten analyse nieuw is voor mij en er niet extreem veel tijd is deze periode heb ik aan chat gpt gevraagd om deze kolomnamen te analyseren en een uitleg te geven wat elke kolom voor inhoud heeft. Hieruit ga ik dan een selectie maken met kolommen die ik ga behouden voor de statistische analyse. Voor de daadwerkelijke EDA heb ik niet dit bestand nodig als hoofddata, daarom laat ik dit voor nu zo staan. Mochten we het nog nodig hebben dan kan ik altijd nog bepaalde kolommen eruit selecteren. Ik kan dit bestand wel gebruiken om te controleren welk sample bij welke metabolomics meting hoort. 
+
+
+
+
+ 
+
+ 
+
+ 
