@@ -1,0 +1,90 @@
+---
+title: "Logboek_Gea"
+output: html_document
+---
+
+Auteur: Gea Bakker
+Project: *Omics, Multi-omics analysis of thermogenic lypolysis in brown adipocytes
+Repository: https://github.com/Nikkieeex/Multi-omics_lypolysis_brown_adipocytes.git 
+Wetenschappelijk artikel: https://www.sciencedirect.com/science/article/pii/S2589004225016438 
+Groepsgenoten: Janine Postmus, Joris Deelstra, Nicole Bovenga
+Deadline: 2026-05-04
+
+Gebruikte tools:
+```{r, libraries}
+library(Rsamtools)
+library(dplyr)
+library(Featurecount)
+```
+
+
+### Logboek van Gea Bakker
+Dit logboek doorloopt de handelingen die uitgevoerd zijn door Gea Bakker en toont de bijdrage voor het project. Het uiteindelijke product van dit project is een wetenschappelijk artikel waarbij de data van het bestaande wetenschappelijk artikel gebruikt is. Voor ons artikel wordt er een nieuwe onderzoeksvraag bedacht die te beantwoorden is met deze data en mogelijk extra literatuur onderzoek. 
+
+#### Samenvatting wetenschappelijk artikel
+
+### Data inlezen en exploratieve verkenning
+Voor de data verder verwerkt wordt, voer ik eerst een exploratieve data-analyse uit op de BAM-files. Hierbij lees ik de bestanden in en controleer ik de aantal reads per bestand en het aantal gemapte en ongemapte reads. 
+
+Bij een globale verkenning van de map met BAM-files viel op dat er geen bijbehorende BAI-files aanwezig waren. BAI-files zijn indexbestanden voor BAM-files en zijn nodig voor bepaalde analyses, zoals het snel opvragen van informatie per chromosoom of contig. Daarom worden de BAM-files eerst geïndexeerd voordat de verdere verkenning wordt uitgevoerd. 
+
+Nadat dit allemaal uitgevoerd is ga ik met featureCounts een count tabel maken. Hierbij worden alignments uit de BAM-files gekoppeld aan genen of features uit de annotatie. De count tabel geeft per gen weer hoeveel reads aan elk sample zijn toegewezen.
+
+```{r, BAI-files maken}
+bam_files <- list.files(
+  path = "/students/2025-2026/Thema08/lipolyse/unpacked/transcriptomics",
+  pattern = "\\.bam$",
+  full.names = TRUE
+)
+
+indexBam(bam_files)
+
+```
+
+Voor de zekerheid check ik even of er voor alle BAM-files nu een BAI-file gemaakt is. Dit om te voorkomen dat er verderop in de verkenning errors ontstaan. 
+
+```{r}
+data.frame(
+  bam = basename(bam_files),
+  index_exists = file.exists(paste0(bam_files, ".bai"))
+)
+```
+
+Nu er voor elke BAM-file een BAI-file gemaakt is, ga ik verder met de verkenning. Ik ga eerst kijken naar de total reads, mapped reads, unmapped reads en de percentage gemapte reads. 
+
+```{r}
+bam_summary <- data.frame(
+  sample = basename(bam_files),
+  total_records = NA,
+  mapped = NA,
+  unmapped = NA,
+  mapping_percentage = NA
+)
+
+for (i in seq_along(bam_files)) {
+  stats <- idxstatsBam(bam_files[i])
+  
+  bam_summary$total_records[i] <- sum(stats$mapped + stats$unmapped)
+  bam_summary$mapped[i] <- sum(stats$mapped)
+  bam_summary$unmapped[i] <- sum(stats$unmapped)
+  bam_summary$mapping_percentage[i] <- round(
+    bam_summary$mapped[i] / bam_summary$total_records[i] * 100,
+    2
+  )
+}
+
+bam_summary
+```
+
+Het is opvallend dat voor elk BAM-file een mapping percentage van 100% werd gevonden. Dit komt waarschijnlijk doordat alleen de gemapte alignments in de BAM-files opgenomen zijn en de ongemapte reads kunnen mogelijk weggeschreven zijn in andere outputbestanden of vermeld worden in logbestanden. 
+
+Het laagste aantal gemapte alignments is 40.794.932. Dit laat zien dat ook het kleinste bestand nog een groot aantal alignments bevat en dat de bestanden voldoende data bevatten voor verdere verwerking.
+
+Na deze controle ga ik een count tabel maken met featureCounts. Hierbij worden de alignments uit de BAM-files gekoppeld aan genen of features uit de annotatie. De count tabel geeft per gen weer hoeveel reads aan elk sample zijn toegewezen. Deze tabel kan ik vervolgens gebruiken als basis voor de verdere exploratieve data-analyse.
+
+De count tabel heb ik gemaakt door de onderstaande code uit te voeren in de terminal.
+```{bash}
+featureCounts -T 64 -p -a ref_genome/Mus_musculus.GRCm39.112.gtf -o counts.txt *.bam
+```
+
+Door "*.bam" te gebruiken worden alle BAM-files tot 1 count tabel verwerkt. Met de optie -a is het annotatiebestand van het referentie genoom van de muis meegegeven. De optie -o geeft aan dat de output wordt opgeslagen als counts.txt in dezelfde map waar de BAM-files in staan. Met -T 64 worden er 64 threads gebruikt om de analyse sneller uit te voeren. De optie -p geeft aan dat de data paired-end reads bevat. 
