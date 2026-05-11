@@ -3,3 +3,208 @@ title: "Logboek_NicoleB"
 output: html_document
 ---
 
+
+#### 20-04-2026
+Als start heb ik met mijn groepje overlegd wat onze waarden zijn. Op basis daarvan heb ik deze samenwerkingsovereenkomst gemaakt:
+
+* Elke les aanwezig tenzij anders overlegd.
+* Afmelden bij ziekte en niet-tijdige aanwezigheid.
+* Wekelijkse overleg wat er is gedaan en wat we gaan doen.
+* Contact via Teams en WhatsApp.
+* Deadlines worden vooraf afgesproken en nageleefd. Afspraak is afspraak.
+* Taken worden eerlijk verdeeld en niet andermans taken doen zonder overleg.
+* Als iemand deze overeenkomsten niet naleeft, behouden anderen het recht om naar de docent te stappen.
+
+#### 21-04-2026
+
+Dit is de link naar het wetenschappelijk artikel die wij gaan "nabootsen"
+https://www.sciencedirect.com/science/article/pii/S2589004225016438?via%3Dihub
+
+Data staat nu op assemblix in het mapje Thema08\Lypolyse. 
+
+Github: https://github.com/Nikkieeex/Multi-omics_lypolysis_brown_adipocytes
+
+Geef hier uitleg wat we dit project moeten doen!!
+
+Ze onderzoeken hoe bruine vetcellen reageren wanneer ze worden gestimuleerd om vet af te breken en warmte te produceren. 
+Dit proces heet thermogene lipolyse en wordt in het experiment opgewekt door de cellen bloot te stellen aan norepinefrine. 
+Tijdens dit experiment wordt op meerdere tijdstippen gemeten.
+
+
+#### 22-04-2026
+
+Onze docent Tsjerk Wassenaar heeft vandaag uitleg gegeven over preproccesing. Ik heb daar wat notities over gemaakt en een stappenplan.
+
+Stappen moeten chronologisch:
+ 
+1.  Artikel lezen (iedereen voorzich) 
+Multi-omics analysis of thermogenic lipolysis in brown adipocytes
+ 
+2. Vectorize data (Joris)
+Joris heeft alle data gedownload en we kijken naar welke bestanden nuttig zijn voor ons. Er zitten ook nog .raw data tussen en alle drie omics mogen nog gemapped worden tegen referentie genoom. 
+ 
+Wanneer deze eerste stap is afgerond gaat Joris een word document opstellen voor ons artikel. 
+Tip van Tsjerk is kijk niet naar opmaakt en hou het simpel, vanwege het herformatteren van artikel later. Hoofdvraag artikel: focus op de methode in het artikel en niet hoofdvraag op biologie zetten
+ 
+3. Ieder een omics (Gea, Janine, Nicole)
+Transcriptomics: Gea
+Metabolomics: Janine
+Proteomics: Nicole
+ 
+Hier duid Tsjerk om 3 veranderingen. 
+Log transform, Goed kijken naar hoe de verdeling is. Kijk naar outliers en scheefheid
+Normalize observations, Kijk naar samples dus horizontale rijen en normalize deze
+Normalize features, Kijk naar features dus kolommen en normalize 
+Er zijn 32 samples dus er moeten 32 features komen. Uitleg over features begin mei dus eerst naar eerste stappen kijken.
+ 
+Uiteindelijke resultaat is een numpy.array. 
+Wanneer je klaar bent met jouw deel voordat andere dat zijn kun je het volgende doen. Kijk naar de hoofdvraag van het referentie artikel. Wat is er wel en niet onderzocht en hoe kunnen wij onze eigen draai geven. 
+
+Notes: 
+Tsjerk heeft een library over regressie van tijd en het patroon in de data. Want we hebben verschillende tijdspunten (library heet chello). Dit kunnen we mogelijk later gebruiken na preprocessing stap. 
+ 
+Logboek inhoud: wat je doet. hoe (methode) en wat er uitkomt
+
+
+#### 04-05-2026
+
+Ik kwam op google scolar een mooi artikel tegen die mij een beter beeld gaf van protomics. https://www.mdpi.com/2073-4425/15/12/1551
+
+Ik heb ook een intressante tool gevonden genaamd MINIE. Het staat voor Multi-omic network inference from time-series data.
+Het is een machine learning tool die ik later wel zou willen uittesten. Ik heb hem gevonden in een artikel op pubmed https://pmc.ncbi.nlm.nih.gov/articles/PMC12521560/
+
+Leg meer uit Nicole
+
+
+#### 07-05-2026
+
+Ik heb 2 wetenschappelijke artikelen gelezen die lijken op ons project en daar heb ik veel van opgestoken. https://pubmed.ncbi.nlm.nih.gov/41827860/
+Een van deze was een review paper en heb ik veel opgestoken over bruine vetcellen. 
+De belangrijkste conclusie uit deze studies is dat bruine vetcellen (BAT) veel complexer en belangrijker zijn dan vroeger gedacht. 
+Ze zijn niet alleen “warmteproducerende vetcellen”, maar actieve metabole regelcentra. Er werden ook onderzoeken benoemd waar
+ze signaal eiwitten voor mogelijk endocriene verbanden en zelf darmmicrobiota verbanden zijn gevonden. We moeten wel voorzichtig conclusies trekken,
+omdat de meeste onderzoeken alleen nog op muizen zijn gedaan. 
+
+
+#### 08-05-2026
+
+Voordat we de data kunnen analyseren moeten we kijken naar de data. De dataset bestaat uit meerdere 
+MaxQuant-outputbestanden afkomstig van een LC-MS/MS proteomicsanalyse. De map bevat informatie op verschillende niveaus, 
+waaronder 20.015 eiwitgroepen in proteinGroups.txt, 49.782 peptiden in peptides.txt, 349.521 peptide-identificaties in evidence.txt 
+en 2.013.893 MS/MS-identificaties in msms.txt. Daarnaast bevat allPeptides.txt 1.096.681 peptidefeatures en msmsScans.txt ongeveer 
+504.840 MS/MS-scans.
+Ook zijn bestanden aanwezig voor kwaliteitscontrole (summary.txt) en post-translationele modificaties, zoals methionine-oxidatie 
+(Oxidation (M)Sites.txt, 1.477 entries). Volgens de beschrijving in tables.pdf bevat proteinGroups.txt onder andere LFQ-intensiteiten,
+peptide-aantallen en sequence coverage per eiwitgroep, waardoor dit bestand waarschijnlijk centraal zal staan in de verdere analyse 
+van de proteomicsdata.
+
+Ik heb een file aangemaakt genaamd Exploratory_Data_Analysis_proteomics.Rmd hier zet ik statestiek en visualisaties in om een
+beter begrip te krijgen van de data. 
+Ik laad proteinGroups.txt in omdat hier samengevat in staat wat wij willen weten.( eiwitdata en LFQ-intensiteiten)
+
+
+
+## Exploratory Data Analysis
+
+Wat moet in mijn EDA: (voor mijzelf)
+Is mijn data bruikbaar?
+Zijn samples vergelijkbaar?
+Zijn er outliers/batch effects?
+Hoe zijn de intensiteiten verdeeld?
+Hoeveel missing values heb ik?
+Heb ik log-transformatie of extra normalisatie nodig?
+
+
+Eerst data inladen die we willen beoordelen als het ware. 
+
+```{r}
+library(tidyverse)
+library(pheatmap)
+library(ggplot2)
+# librarys alvast inladen voor later, doe ik graag in eerste code blok
+
+
+file.exists("/students/2025-2026/Thema08/lipolyse/unpacked/proteomics//proteinGroups.txt") # Als er True staat bestaat het pad
+data <- read.delim("/students/2025-2026/Thema08/lipolyse/unpacked/proteomics//proteinGroups.txt") 
+head(data)
+```
+
+```{r}
+dim(data)
+```
+
+
+```{r}
+colnames(data)
+
+```
+Je ziet dat de data set 18 samples bevat van 6 replicaten op 0h, 6 replicaten op 4h en 6 replicaten op 24h
+
+We gaan nu verder kijken naar LFQ.intensity, omdat deze kolommen de genormaliseerde eiwitabundanties tussen samples bevatten. 
+
+
+```{r}
+lfq <- data[, grep("LFQ.intensity", colnames(data))]
+head(lfq)
+```
+```{r}
+dim(lfq)
+```
+```{r}
+summary(lfq)
+```
+```{r}
+hist(as.matrix(lfq),
+     breaks = 100,
+     main = "Raw LFQ Intensities",
+     xlab = "Raw intensity")
+```
+De ruwe LFQ-intensiteiten zijn sterk rechts-scheef verdeeld, waarbij een klein aantal eiwitten extreem hoge abundanties heeft. Daarom is een log2-transformatie toegepast om de verdeling compacter en beter vergelijkbaar te maken voor verdere statistische analyse.
+
+
+```{r}
+lfq[lfq == 0] <- NA
+
+lfq_log <- log2(lfq)
+```
+
+```{r}
+hist(as.matrix(log2(lfq)),
+     breaks = 100,
+     main = "Distribution of LFQ intensities",
+     xlab = "Log2 intensity")
+```
+
+
+
+```{r}
+missing_per_protein <- rowSums(is.na(lfq))
+
+hist(missing_per_protein,
+     breaks = 18,
+     main = "Missing Values Per Protein",
+     xlab = "Aantal missende samples")
+```
+Er is een grote groep die missende 
+Veel eiwitten missen in meerdere samples doordat laag-abundante eiwitten niet altijd door de massaspectrometer worden gedetecteerd, waardoor eiwitten met extreem veel missende waarden later waarschijnlijk uit de analyse gefilterd zullen worden.
+
+
+
+
+
+
+
+
+#### 09-08-2026
+
+Op basis van ons gesprek met Marcel heb ik besloten om wat onderzoek te doen over de volgende stappen. 
+Ik denk dat vooral dimensiereductie, DESeq2 en PLS goed passen bij ons onderzoek. Met dimensiereductie, zoals PCA, kunnen we eerst bekijken of de verschillende tijdspunten of condities van elkaar verschillen en of er outliers aanwezig zijn in de data. Dit geeft een eerste overzicht van de grootste patronen binnen de datasets.
+
+Daarnaast lijkt DESeq2 mij geschikt voor de transcriptomicsdata, omdat deze methode speciaal ontwikkeld is voor RNA-seq countdata. Hiermee kunnen we onderzoeken welke genen significant verschillen tussen bijvoorbeeld 0, 4 en 24 uur.
+
+Ook lijkt PLS of DIABLO erg nuttig voor ons onderzoek, omdat deze technieken meerdere omicslagen tegelijk kunnen integreren. Hierdoor kunnen verbanden tussen bijvoorbeeld transcriptomics, proteomics en metabolomics worden onderzocht. In het artikel wordt deze methode ook gebruikt voor de multi-omics analyse. 
+
+Wel denk ik dat we voorzichtig moeten zijn met heel complexe AI-methoden, omdat multi-omics datasets vaak relatief weinig samples bevatten. Hierdoor bestaat het risico op overfitting, wat ook in het artikel wordt benoemd. 
+
+
+
