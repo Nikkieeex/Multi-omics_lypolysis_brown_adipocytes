@@ -14,7 +14,8 @@ Gebruikte tools:
 ```{r, libraries}
 library(Rsamtools)
 library(dplyr)
-library(Featurecount)
+library(tidyr)
+library(ggplot2)
 ```
 
 
@@ -88,3 +89,142 @@ featureCounts -T 64 -p -a ref_genome/Mus_musculus.GRCm39.112.gtf -o counts.txt *
 ```
 
 Door "*.bam" te gebruiken worden alle BAM-files tot 1 count tabel verwerkt. Met de optie -a is het annotatiebestand van het referentie genoom van de muis meegegeven. De optie -o geeft aan dat de output wordt opgeslagen als counts.txt in dezelfde map waar de BAM-files in staan. Met -T 64 worden er 64 threads gebruikt om de analyse sneller uit te voeren. De optie -p geeft aan dat de data paired-end reads bevat. 
+
+Counts.txt bevat nu een count tabel waarin per gen staat hoeveel reads aan elk sample zijn toegewezen. Deze count tabel wordt vervolgens ingelezen en gebruikt voor verdere exploratieve data-analyse.
+
+Voor de echte verkenning ga ik eerst controleren of de count tabel goed ingelezen wordt. Dit doe ik door te controleren wat de head is, de aantal kolommen en rijen en de titels van de kolommen.
+
+```{r}
+counts <- read.delim(
+  "/students/2025-2026/Thema08/lipolyse/unpacked/transcriptomics/counts.txt",
+  comment.char = "#",
+  check.names = FALSE
+)
+
+head(counts)
+str(counts)
+```
+
+De count tabel is ingelezen met read.delim(). Vervolgens is er met head() en str() gecontroleerd of de tabel correct is ingelezen. Ik krijg 57.186 features en 24 kolommen terug. De eerste kolommen bevatten geninformatie, zoals GeneID, Chr, start, end, strand en length. De rest van de kolommen bevatten de read counts per sample. Ik heb ook even gekeken naar de datatypes van de kolommen en deze zien er bruikbaar uit. De kolommen die de counts bevatten zijn integers en de kolom met de gen id is een character, dit is bruikbaar voor verdere verwerking. 
+
+Voor een snelle verwerking ga ik eerst een data frame maken met alleen de gen id en de counts per sample. 
+```{r}
+gene_info <- counts[, 1:6]
+count_matrix <- counts[, 7:ncol(counts)]
+
+rownames(count_matrix) <- counts$Geneid
+
+count_matrix <- as.data.frame(lapply(count_matrix, as.numeric))
+rownames(count_matrix) <- counts$Geneid
+
+dim(count_matrix)
+head(count_matrix)
+```
+
+Ik ga eerst kijken naar de verdeling van de counts per sample met behulp van een boxplot. Hiermee kan ik snel controleren of de samples een vergelijkbare countverdeling hebben en of er sprake is van extreme waarden of scheefheid in de data. RNA-seq countdata bevat vaak veel lage waarden en enkele zeer hoge waarden. Hierdoor verwacht ik dat de counts niet normaal verdeeld zijn.
+
+```{r}
+raw_long <- count_matrix %>%
+  mutate(Geneid = rownames(count_matrix)) %>%
+  pivot_longer(
+    cols = -Geneid,
+    names_to = "sample",
+    values_to = "count"
+  )
+
+ggplot(raw_long, aes(x = sample, y = count)) + 
+  geom_boxplot(outlier.size = 0.5) +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+  labs(
+    title = "Verdeling van ruwe counts per sample",
+    x = "Sample",
+    y = "Ruwe count"
+  )
+```
+
+Deze boxplot laat zien dat de meeste waarden laag zijn, terwijl enkele genen extreem hoge counts hebben. Hierdoor wordt de y-as sterk beinvloed door outliers, waardoor de boxplots visueel plat gedrukt zijn. Door deze scheve verdeling zijn de samples moeilijk te vergelijken.
+
+Deze scheve verdeling zorgt ervoor dat ik als vervolg stap een logtransformatie ga uitvoeren. De logtransformatie maakt de extreme waarden minder dominant en dat maakt de verdeling van de counts beter zichtbaar. 
+
+Omdat ik veel '0' heb in mijn counts, voeg ik een +1 toe in mijn log. Dit komt er dan uit te zien als log2(count + 1). Een log uitvoeren op 0 levert '-Inf' op, wat min oneindig betekent en hier kan ik niet mee verder rekenen. Log2(0 + 1) levert 0 op, dus de 0 counts worden niet beinvloed door de logtransformatie.
+
+```{r}
+log_counts <- log2(count_matrix + 1)
+
+log_long <- log_counts %>%
+  mutate(Geneid = rownames(log_counts)) %>%
+  pivot_longer(
+    cols = -Geneid,
+    names_to = "sample",
+    values_to = "log_count"
+  )
+
+ggplot(log_long, aes(x = sample, y = log_count)) +
+  geom_boxplot(outlier.size = 0.5) +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+  labs(
+    title = "Verdeling counts per sample na logtransformatie",
+    x = "Sample",
+    y = "log2(count + 1)"
+  )
+```
+
+Na de logtransformatie is de verdeling van de counts per sample duidelijker zichtbaar dan zonder deze transformatie. De extreme waarden hebben minder invloed op de schaal van de y-as waardoor de boxplots beter met elkaar vergeleken kunnen worden. De meeste samples laten een vergelijkbare verdeling zien, maar er blijven outliers aanwezig. Dit is normaal bij RNA-seq countdata, omdat sommige genen veel hoger tot expressie komen dan andere genen.
+
+De logtransformatie vermindert de scheefheid, maar corrigeert nog niet voor de verschillen in library size tussen samples. Library size geeft het totaal aantal getelde reads/fragmenten aan per sample. Dit ga ik dus doen omdat verschillen in sequencingdiepte invloed kunnen hebben op de countwaarden tussen samples.
+
+```{r}
+library_sizes <- colSums(count_matrix)
+
+library_df <- data.frame(
+  sample = names(library_sizes),
+  library_size = library_sizes
+)
+
+ggplot(library_df, aes(x = sample, y = library_size)) + 
+  geom_col() + 
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+  labs(
+    title = "library size per sample",
+    x = "Sample",
+    y = "Totaal aantal toegewezen reads/fragments"
+  )
+```
+
+De library size is bepaald om per sample alle reads bij elkaar op te tellen. In de staafdiagram is te zien dat er grote verschillen zijn in library size tussen de samples, een aantal samples hebben 2.0e+07 reads en sommigen hebben 5.0e+07 tot 6.0e+07 reads. Dit toont aan dat het niet eerlijk is om de sample counts direct met elkaar te vergelijken. Om deze reden ga ik een normalisatie uitvoeren om te corrigeren voor deze grote verschillen. 
+
+```{r}
+cpm_counts <- sweep(
+  count_matrix,
+  2,
+  colSums(count_matrix),
+  FUN = "/"
+) * 1e6
+
+log_cpm <- log2(cpm_counts + 1)
+
+log_cpm_long <- as.data.frame(log_cpm) %>%
+  mutate(Geneid = rownames(log_cpm)) %>%
+  pivot_longer(
+    cols = -Geneid,
+    names_to = "sample",
+    values_to = "log_cpm"
+  )
+
+ggplot(log_cpm_long, aes(x = sample, y = log_cpm)) + 
+  geom_boxplot(outlier.size = 0.5) +
+  theme_bw() + 
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+  labs(
+    title = "Verdeling na sample-normalisatie",
+    x = "Sample",
+    y = "log2(CPM + 1)"
+  )
+```
+
+Na de sample-normalisatie, waarbij de counts per sample gedeeld is door de totale library size van dat sample, waarna het vermenigvuldigd is met 1 miljoen. Vervolgens is er nog een log transformatie uitgevoerd zodat de verdeling beter zichtbaar is.
+
+In de boxplot na de sample-normalisatie zijn de samples beter met elkaar te vergelijken dan de ruwe counts. De verschillen in library size zijn nu gecorrigeerd, maar er zijn nog steeds outliers zichtbaar. Dit is niet te voorkomen, omdat sommige genen dusdanig meer tot expressie komen dan andere. Maar na deze normalisatie zijn de samples een stuk beter te vergelijken.
