@@ -268,7 +268,7 @@ head(top_changed[, c("Gene.names", "log2_fc")], 20)
 
 
 
-##### 13-05-2026
+#### 13-05-2026
 
 ```{r}
 boxplot(lfq,
@@ -292,7 +292,7 @@ barplot(sample_sums,
 
 
 
-##### 14-05-2026
+#### 14-05-2026
 
 
 ```{r}
@@ -366,9 +366,49 @@ De eerste principal components verklaren een groot deel van de variantie in de d
 Omdat de dataset veel meer features dan samples bevat, is voor de PCA eerst geselecteerd op de eiwitten met de hoogste variantie. Daarnaast is SVD gebruikt als numeriek stabielere methode voor dimensiereductie.
 
 
+#### 16-05-2026
 
+```{r}
+dist_matrix <- dist(t(lfq_log))
 
+hc <- hclust(dist_matrix)
 
+plot(hc,
+     main="Sample clustering")
+```
+
+```{r}
+cumvar <- cumsum(vals/sum(vals))
+
+plot(cumvar,
+     type="b",
+     xlab="Principal component",
+     ylab="Cumulative explained variance",
+     main="Cumulative explained variance")
+abline(h=0.8)
+```
+```{r}
+plot(scores[,1],
+     scores[,3],
+     col=as.factor(groups),
+     pch=19,
+     xlab="PC1",
+     ylab="PC3",
+     main="PC1 vs PC3")
+```
+
+```{r}
+pairs(scores[,1:4],
+      col=as.factor(groups),
+      pch=19)
+```
+
+```{r}
+barplot(vals/sum(vals),
+        main="Variance per PC",
+        xlab="PC",
+        ylab="Explained variance")
+```
 
 
 
