@@ -359,6 +359,11 @@ plot(scores[,1],
      xlab = "PC1",
      ylab = "PC2",
      main = "Feature x feature PCA")
+
+legend("topright",
+       legend=levels(as.factor(groups)),
+       col=1:3,
+       pch=19)
 ```
 
 De eerste principal components verklaren een groot deel van de variantie in de dataset. In de PCA-scoreplot is te zien dat de samples grotendeels clusteren per tijdspunt. Dit suggereert dat de eiwitprofielen veranderen tijdens thermogene lipolyse en dat de verschillende tijdspunten biologisch van elkaar verschillen.
@@ -403,14 +408,146 @@ pairs(scores[,1:4],
       pch=19)
 ```
 
+#### 17-05-2026
+Nog even wat plots maken die PCA ondersteunen
+
 ```{r}
 barplot(vals/sum(vals),
         main="Variance per PC",
         xlab="PC",
         ylab="Explained variance")
 ```
+```{r}
+explained <- vals/sum(vals)
+
+plot(explained,
+     type="b",
+     pch=19,
+     xlab="Principal component",
+     ylab="Explained variance",
+     main="Scree plot")
+```
+Leg dit nog uit )PCA is 40 % patroon
+
+```{r}
+barplot(explained,
+        xlab="Principal component",
+        ylab="Explained variance",
+        main="Scree plot")
+```
+Dit zijn wat test plotjes btw
+
+#### 19-05-2026
+
+Nog even opschrijven wat ik had gevonden later tabladen staan nog open
+
+
+#### 22-05-2026
+
+Ik heb na de midterm reviw presentatie naar wat opties gekeken waar ons project naartoe kan gaan en ik kwam bij MOFA+
+
+https://pmc.ncbi.nlm.nih.gov/articles/PMC7212577/ 
+
+Leg meer uit
+
+
+#### 24-05-2026
+
+Vandaag heb ik gewerkt aan het geschikt maken van de proteomicsdataset voor integratie met MOFA+. In de literatuur wordt benadrukt dat een belangrijke beperking van MOFA+ is dat het model zorgvuldige preprocessing vereist. Dit komt doordat MOFA+ probeert onderliggende biologische signalen te extraheren uit complexe datasets, terwijl ruwe omics-data vaak verstoord wordt door technische en statistische factoren.
+Voorbeelden van zulke verstoringen zijn:
+
+technische ruis
+batch effects
+verschillende distributies tussen datasets
+extreme waarden
+missing values
+
+Omdat MOFA+ gevoelig kan zijn voor deze factoren, is het belangrijk om kritisch te evalueren welke preprocessing-stappen noodzakelijk zijn voor mijn dataset.
+
+
+Een van de eerste keuzes die gemaakt moest worden, is hoe om te gaan met missing values. In proteomicsdata komen missende waarden vaak voor door detectielimieten van de massaspectrometer, en in veel gevallen moeten deze gefilterd of geïmputeerd worden.
+Mijn eerste aanname was daarom dat filtering van eiwitten met veel missende waarden noodzakelijk zou zijn voordat de data gebruikt kan worden in MOFA+.
+Om dit te controleren heb ik het aantal missende waarden per eiwit berekend:
+
+```{r}
+
+table(rowSums(is.na(lfq_log)))
+
+```
+
+De uitkomst van deze analyse laat zien dat alle eiwitten 0 missende waarden bevatten. Dit betekent dat er in de huidige bewerkte dataset geen ontbrekende waarden meer aanwezig zijn.
+
+Dit resultaat was enigszins onverwacht, omdat proteomicsdata doorgaans juist bekend staat om het bevatten van veel missende waarden. Dit suggereert dat in een eerdere preprocessing stap (bijvoorbeeld filtering of transformaties) de missing values mogelijk al zijn verwijderd of impliciet zijn behandeld.
+Op basis hiervan concludeer ik dat:
+
+verdere filtering op basis van missing values niet nodig is
+imputatie van missende waarden in dit geval niet van toepassing is
+de dataset al relatief “clean” is met betrekking tot missingness
+
+Dit is gunstig voor de verdere analyse, omdat het betekent dat de data stabieler en eenvoudiger te gebruiken is voor MOFA+, zonder dat extra aannames (zoals imputatie) geïntroduceerd hoeven te worden.
+
+
+#### 25-05-2026
+
+Ik ga nu kijken naar de scaling 
+
+In de literatuur wordt vaak aangeraden om data te schalen, omdat verschillen in schaal tussen features het model kunnen beïnvloeden. Toch is het belangrijk vind ik om eerst te evalueren of deze stap in mijn specifieke dataset daadwerkelijk nodig is.
+
+
+Om dit te onderzoeken heb ik de data vóór en na scaling met elkaar vergeleken. De scaling is uitgevoerd met z-score normalisatie per eiwit:
+
+```{r}
+lfq_scaled <- t(scale(t(lfq_log)))
+
+```
 
 
 
+Nu kijken met boxplot of er ook echt verschillen zijn
+```{r}
+par(mfrow = c(1, 2))
 
+# VOOR scaling
+boxplot(lfq_log,
+        las = 2,
+        main = "Before scaling",
+        ylab = "Log2 intensity")
+
+# NA scaling
+boxplot(lfq_scaled,
+        las = 2,
+        main = "After scaling",
+        ylab = "Z-score")
+
+par(mfrow = c(1,1))
+```
+In de linker plot (“Before scaling”) is te zien dat de ruwe log2-intensiteiten per sample niet volledig overlappen. Hoewel de medianen relatief dichtbij elkaar liggen, is er variatie in spreiding en bereik tussen de samples.
+In de rechter plot (“After scaling”) is zichtbaar dat:
+
+de medianen rond 0 liggen
+de spreiding tussen samples veel consistenter is
+de distributies beter vergelijkbaar zijn
+
+Daarnaast is duidelijk dat de schaal volledig is veranderd van absolute intensiteiten (log2) naar relatieve waarden (z-scores).
+
+De vergelijking tussen de twee plots laat zien dat scaling een duidelijk effect heeft op de data.
+Hoewel de verschillen tussen samples vóór scaling niet extreem groot zijn, is er wel sprake van variatie in spreiding en schaal. Na scaling zijn deze verschillen sterk verminderd, waardoor alle samples op een vergelijkbare schaal liggen.
+Dit is belangrijk voor MOFA+, omdat het model anders beïnvloed kan worden door eiwitten met grotere variatie of hogere absolute waarden.
+
+
+## Feature selectie
+
+Na het schalen van de data heb ik de volgende stap uitgevoerd: het selecteren van de meest informatieve eiwitten voor gebruik in MOFA+. Omdat de dataset veel meer eiwitten dan samples bevat, is het belangrijk om ruis te verminderen en de analyse te focussen op de belangrijkste variatie.
+
+```{r}
+vars <- apply(lfq_scaled, 1, var)
+
+summary(vars)
+
+```
+
+Omdat de data vooraf is geschaald met z-score normalisatie, is de variantie per eiwit gelijk gemaakt. Hierdoor is variantie geen geschikte maat meer om informatieve eiwitten te selecteren. In plaats daarvan is gebruik gemaakt van de PCA-analyse, die laat zien dat de dataset al duidelijke biologische structuur bevat en geen verdere filtering vereist.
+
+
+#### 26-05-2026
 
