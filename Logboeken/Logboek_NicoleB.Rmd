@@ -140,43 +140,27 @@ colnames(data)
 ```
 Je ziet dat de data set 18 samples bevat van 6 replicaten op 0h, 6 replicaten op 4h en 6 replicaten op 24h
 
-We gaan nu verder kijken naar LFQ.intensity, omdat deze kolommen de genormaliseerde eiwitabundanties tussen samples bevatten. 
+We gaan nu verder kijken naar LFQ.intensity. LFQ.intensity zijn de Label-Free Quantification waarden. Deze beschrijven de relatieve hoeveelheid van een eiwit in een sample.
+
+Het bestand proteinGroups.txt is een samenvatting van de eiwitidentificaties uit MaxQuant (MaxQuant is a quantitative proteomics software package designed for analyzing large mass-spectrometric data sets). Elke rij stelt een eiwitgroep voor en de kolommen bevatten eigenschappen en metingen van deze eiwitgroep.
+
+In Sequence.coverage staan de percentage van de aminozuursequentie dat gevonden is.
+
+
 
 
 ```{r}
 lfq <- data[, grep("LFQ.intensity", colnames(data))]
 head(lfq)
 ```
+Ik zie nullen dus we gaan dit even verder uitzoeken
+
 ```{r}
 dim(lfq)
 ```
 ```{r}
 summary(lfq)
 ```
-```{r}
-hist(as.matrix(lfq),
-     breaks = 100,
-     main = "Raw LFQ Intensities",
-     xlab = "Raw intensity")
-```
-De ruwe LFQ-intensiteiten zijn sterk rechts-scheef verdeeld, waarbij een klein aantal eiwitten extreem hoge abundanties heeft. Daarom is een log2-transformatie toegepast om de verdeling compacter en beter vergelijkbaar te maken voor verdere statistische analyse.
-
-
-```{r}
-lfq[lfq == 0] <- NA
-
-lfq_log <- log2(lfq)
-```
-
-```{r}
-hist(as.matrix(log2(lfq)),
-     breaks = 100,
-     main = "Distribution of LFQ intensities",
-     xlab = "Log2 intensity")
-```
-
-
-
 ```{r}
 missing_per_protein <- rowSums(is.na(lfq))
 
@@ -186,25 +170,384 @@ hist(missing_per_protein,
      xlab = "Aantal missende samples")
 ```
 Er is een grote groep die missende 
-Veel eiwitten missen in meerdere samples doordat laag-abundante eiwitten niet altijd door de massaspectrometer worden gedetecteerd, waardoor eiwitten met extreem veel missende waarden later waarschijnlijk uit de analyse gefilterd zullen worden.
+Veel eiwitten missen in meerdere samples doordat laag-abundante eiwitten niet altijd door de massaspectrometer worden gedetecteerd, waardoor eiwitten met extreem veel missende waarden later waarschijnlijk uit de analyse gefilterd zullen worden. 
 
 
 
+##### Log
+
+```{r}
+hist(as.matrix(lfq),
+     breaks = 100,
+     main = "Raw LFQ Intensities",
+     xlab = "Raw intensity")
+```
+De ruwe LFQ-intensiteiten zijn sterk rechts-scheef verdeeld, waarbij een klein aantal eiwitten extreem hoge abundanties heeft. 
+
+
+```{r}
+lfq[lfq == 0] <- NA
+
+lfq_log <- log2(lfq)
+```
+
+log2-transformatie toegepast om de verdeling compacter en beter vergelijkbaar te maken voor verdere statistische analyse.
+
+```{r}
+hist(as.matrix(log2(lfq)),
+     breaks = 100,
+     main = "Distribution of LFQ intensities",
+     xlab = "Log2 intensity")
+```
+Dit is een stuk beter
 
 
 
-
-
-#### 09-08-2026
+#### 09-05-2026
 
 Op basis van ons gesprek met Marcel heb ik besloten om wat onderzoek te doen over de volgende stappen. 
 Ik denk dat vooral dimensiereductie, DESeq2 en PLS goed passen bij ons onderzoek. Met dimensiereductie, zoals PCA, kunnen we eerst bekijken of de verschillende tijdspunten of condities van elkaar verschillen en of er outliers aanwezig zijn in de data. Dit geeft een eerste overzicht van de grootste patronen binnen de datasets.
 
 Daarnaast lijkt DESeq2 mij geschikt voor de transcriptomicsdata, omdat deze methode speciaal ontwikkeld is voor RNA-seq countdata. Hiermee kunnen we onderzoeken welke genen significant verschillen tussen bijvoorbeeld 0, 4 en 24 uur.
 
-Ook lijkt PLS of DIABLO erg nuttig voor ons onderzoek, omdat deze technieken meerdere omicslagen tegelijk kunnen integreren. Hierdoor kunnen verbanden tussen bijvoorbeeld transcriptomics, proteomics en metabolomics worden onderzocht. In het artikel wordt deze methode ook gebruikt voor de multi-omics analyse. 
+Ook lijkt PLS of DIABLO erg nuttig voor ons onderzoek, omdat deze technieken meerdere omicslagen tegelijk kunnen integreren. Hierdoor kunnen verbanden tussen bijvoorbeeld transcriptomics, proteomics en metabolomics worden onderzocht. In het artikel wordt DIABLO (samen met MOFA) ook gebruikt voor de multi-omics analyse. 
 
-Wel denk ik dat we voorzichtig moeten zijn met heel complexe AI-methoden, omdat multi-omics datasets vaak relatief weinig samples bevatten. Hierdoor bestaat het risico op overfitting, wat ook in het artikel wordt benoemd. 
+Wel denk ik dat we voorzichtig moeten zijn met heel complexe AI/ML methoden, omdat de datasets vaak relatief weinig samples bevatten. Hierdoor bestaat het risico op overfitting, wat ook in het artikel wordt benoemd. https://pubmed.ncbi.nlm.nih.gov/30657866/ 
 
 
+#### 11-05-2016
+
+```{r}
+missing_per_sample <- colSums(is.na(lfq))
+
+barplot(missing_per_sample,
+        las = 2,
+        main = "Missing Values Per Sample",
+        ylab = "Aantal missende waarden")
+```
+De missing values per sample is wel gelijk dus daar gaan we verder niet op in.
+
+
+
+```{r}
+boxplot(lfq_log,
+        las = 2,
+        main = "Log2 LFQ Intensities Per Sample",
+        ylab = "Log2 intensity")
+```
+Er zijn hier ook geen samples die afwijken dus we gaan door 
+
+
+
+```{r}
+top_proteins <- data %>%
+  select(Gene.names, starts_with("LFQ.intensity")) %>%
+  mutate(mean_intensity = rowMeans(select(., starts_with("LFQ.intensity")),
+                                   na.rm = TRUE)) %>%
+  arrange(desc(mean_intensity))
+
+head(top_proteins[, c("Gene.names", "mean_intensity")], 20)
+```
+
+
+
+```{r}
+data$mean_0h <- rowMeans(data[, grep("LFQ.intensity.0h", colnames(data))],
+                         na.rm = TRUE)
+
+data$mean_24h <- rowMeans(data[, grep("LFQ.intensity.24h", colnames(data))],
+                          na.rm = TRUE)
+
+data$log2_fc <- log2((data$mean_24h + 1) / (data$mean_0h + 1))
+
+top_changed <- data %>%
+  arrange(desc(abs(log2_fc)))
+
+head(top_changed[, c("Gene.names", "log2_fc")], 20)
+```
+
+
+
+#### 13-05-2026
+
+```{r}
+boxplot(lfq,
+        las = 2,
+        main = "Raw LFQ Intensities Per Sample",
+        ylab = "Raw intensity")
+```
+De ruwe LFQ-intensiteiten verschillen sterk in schaal en bevatten extreme waarden. Hierdoor zijn de distributies moeilijk onderling te vergelijken.
+
+```{r}
+sample_sums <- colSums(lfq, na.rm = TRUE)
+
+barplot(sample_sums,
+        las = 2,
+        main = "Total LFQ intensity per sample",
+        ylab = "Total intensity")
+```
+
+
+
+
+
+
+#### 14-05-2026
+
+
+```{r}
+cor_matrix <- cor(lfq_log,
+                  use = "pairwise.complete.obs")
+
+pheatmap(cor_matrix,
+         main = "Sample Correlation Heatmap")
+```
+
+De correlaties tussen samples zijn over het algemeen hoog (ongeveer 0.96–1.00). Daarnaast clusteren replicaten van dezelfde tijdspunten grotendeels samen. Er lijken geen extreme outliers of sterk afwijkende samples aanwezig te zijn. Dit suggereert dat de data technisch redelijk consistent is tussen samples.
+
+In de volgende analyse gebruiken we een feature × feature correlatiematrix die Tsjerk ons aanraad.
+Hiermee onderzoeken we welke eiwitten gezamenlijk variëren tussen de verschillende tijdspunten.
+
+
+
+
+
+```{r}
+lfq_clean <- lfq
+lfq_clean[lfq_clean == 0] <- NA
+lfq_log <- log2(lfq_clean)
+
+lfq_log <- lfq_log[rowSums(is.na(lfq_log)) == 0, ]
+
+P <- t(as.matrix(lfq_log))
+
+P <- P[, apply(P, 2, sd) > 0]
+
+vars <- apply(P, 2, var)
+top_n <- min(500, ncol(P))
+
+P <- P[, order(vars, decreasing = TRUE)[1:top_n]]
+
+P <- scale(P)
+
+svd_result <- svd(P)
+
+loadings <- svd_result$v
+scores <- P %*% loadings
+vals <- svd_result$d^2
+```
+Omdat de feature × feature matrix theoretisch symmetrisch hoort te zijn, maar kleine afrondingsfouten tijdens berekeningen numerieke instabiliteit kunnen veroorzaken, is de matrix expliciet symmetrisch gemaakt voordat de eigenwaarden werden berekend. 
+
+
+Met de eigenwaarden kan bekeken worden hoeveel variantie iedere principal component verklaart.
+
+```{r}
+plot(vals / sum(vals),
+     type = "b",
+     main = "Scree plot",
+     xlab = "Principal component",
+     ylab = "Explained variance")
+```
+
+```{r}
+groups <- c(rep("0h", 6), rep("4h", 6), rep("24h", 6))
+
+plot(scores[,1],
+     scores[,2],
+     col = as.factor(groups),
+     pch = 19,
+     xlab = "PC1",
+     ylab = "PC2",
+     main = "Feature x feature PCA")
+
+legend("topright",
+       legend=levels(as.factor(groups)),
+       col=1:3,
+       pch=19)
+```
+
+De eerste principal components verklaren een groot deel van de variantie in de dataset. In de PCA-scoreplot is te zien dat de samples grotendeels clusteren per tijdspunt. Dit suggereert dat de eiwitprofielen veranderen tijdens thermogene lipolyse en dat de verschillende tijdspunten biologisch van elkaar verschillen.
+
+Omdat de dataset veel meer features dan samples bevat, is voor de PCA eerst geselecteerd op de eiwitten met de hoogste variantie. Daarnaast is SVD gebruikt als numeriek stabielere methode voor dimensiereductie.
+
+
+#### 16-05-2026
+
+```{r}
+dist_matrix <- dist(t(lfq_log))
+
+hc <- hclust(dist_matrix)
+
+plot(hc,
+     main="Sample clustering")
+```
+
+```{r}
+cumvar <- cumsum(vals/sum(vals))
+
+plot(cumvar,
+     type="b",
+     xlab="Principal component",
+     ylab="Cumulative explained variance",
+     main="Cumulative explained variance")
+abline(h=0.8)
+```
+```{r}
+plot(scores[,1],
+     scores[,3],
+     col=as.factor(groups),
+     pch=19,
+     xlab="PC1",
+     ylab="PC3",
+     main="PC1 vs PC3")
+```
+
+```{r}
+pairs(scores[,1:4],
+      col=as.factor(groups),
+      pch=19)
+```
+
+#### 17-05-2026
+Nog even wat plots maken die PCA ondersteunen
+
+```{r}
+barplot(vals/sum(vals),
+        main="Variance per PC",
+        xlab="PC",
+        ylab="Explained variance")
+```
+```{r}
+explained <- vals/sum(vals)
+
+plot(explained,
+     type="b",
+     pch=19,
+     xlab="Principal component",
+     ylab="Explained variance",
+     main="Scree plot")
+```
+Leg dit nog uit )PCA is 40 % patroon
+
+```{r}
+barplot(explained,
+        xlab="Principal component",
+        ylab="Explained variance",
+        main="Scree plot")
+```
+Dit zijn wat test plotjes btw
+
+#### 19-05-2026
+
+Nog even opschrijven wat ik had gevonden later tabladen staan nog open
+
+
+#### 22-05-2026
+
+Ik heb na de midterm reviw presentatie naar wat opties gekeken waar ons project naartoe kan gaan en ik kwam bij MOFA+
+
+https://pmc.ncbi.nlm.nih.gov/articles/PMC7212577/ 
+
+Leg meer uit
+
+
+#### 24-05-2026
+
+Vandaag heb ik gewerkt aan het geschikt maken van de proteomicsdataset voor integratie met MOFA+. In de literatuur wordt benadrukt dat een belangrijke beperking van MOFA+ is dat het model zorgvuldige preprocessing vereist. Dit komt doordat MOFA+ probeert onderliggende biologische signalen te extraheren uit complexe datasets, terwijl ruwe omics-data vaak verstoord wordt door technische en statistische factoren.
+Voorbeelden van zulke verstoringen zijn:
+
+technische ruis
+batch effects
+verschillende distributies tussen datasets
+extreme waarden
+missing values
+
+Omdat MOFA+ gevoelig kan zijn voor deze factoren, is het belangrijk om kritisch te evalueren welke preprocessing-stappen noodzakelijk zijn voor mijn dataset.
+
+
+Een van de eerste keuzes die gemaakt moest worden, is hoe om te gaan met missing values. In proteomicsdata komen missende waarden vaak voor door detectielimieten van de massaspectrometer, en in veel gevallen moeten deze gefilterd of geïmputeerd worden.
+Mijn eerste aanname was daarom dat filtering van eiwitten met veel missende waarden noodzakelijk zou zijn voordat de data gebruikt kan worden in MOFA+.
+Om dit te controleren heb ik het aantal missende waarden per eiwit berekend:
+
+```{r}
+
+table(rowSums(is.na(lfq_log)))
+
+```
+
+De uitkomst van deze analyse laat zien dat alle eiwitten 0 missende waarden bevatten. Dit betekent dat er in de huidige bewerkte dataset geen ontbrekende waarden meer aanwezig zijn.
+
+Dit resultaat was enigszins onverwacht, omdat proteomicsdata doorgaans juist bekend staat om het bevatten van veel missende waarden. Dit suggereert dat in een eerdere preprocessing stap (bijvoorbeeld filtering of transformaties) de missing values mogelijk al zijn verwijderd of impliciet zijn behandeld.
+Op basis hiervan concludeer ik dat:
+
+verdere filtering op basis van missing values niet nodig is
+imputatie van missende waarden in dit geval niet van toepassing is
+de dataset al relatief “clean” is met betrekking tot missingness
+
+Dit is gunstig voor de verdere analyse, omdat het betekent dat de data stabieler en eenvoudiger te gebruiken is voor MOFA+, zonder dat extra aannames (zoals imputatie) geïntroduceerd hoeven te worden.
+
+
+#### 25-05-2026
+
+Ik ga nu kijken naar de scaling 
+
+In de literatuur wordt vaak aangeraden om data te schalen, omdat verschillen in schaal tussen features het model kunnen beïnvloeden. Toch is het belangrijk vind ik om eerst te evalueren of deze stap in mijn specifieke dataset daadwerkelijk nodig is.
+
+
+Om dit te onderzoeken heb ik de data vóór en na scaling met elkaar vergeleken. De scaling is uitgevoerd met z-score normalisatie per eiwit:
+
+```{r}
+lfq_scaled <- t(scale(t(lfq_log)))
+
+```
+
+
+
+Nu kijken met boxplot of er ook echt verschillen zijn
+```{r}
+par(mfrow = c(1, 2))
+
+# VOOR scaling
+boxplot(lfq_log,
+        las = 2,
+        main = "Before scaling",
+        ylab = "Log2 intensity")
+
+# NA scaling
+boxplot(lfq_scaled,
+        las = 2,
+        main = "After scaling",
+        ylab = "Z-score")
+
+par(mfrow = c(1,1))
+```
+In de linker plot (“Before scaling”) is te zien dat de ruwe log2-intensiteiten per sample niet volledig overlappen. Hoewel de medianen relatief dichtbij elkaar liggen, is er variatie in spreiding en bereik tussen de samples.
+In de rechter plot (“After scaling”) is zichtbaar dat:
+
+de medianen rond 0 liggen
+de spreiding tussen samples veel consistenter is
+de distributies beter vergelijkbaar zijn
+
+Daarnaast is duidelijk dat de schaal volledig is veranderd van absolute intensiteiten (log2) naar relatieve waarden (z-scores).
+
+De vergelijking tussen de twee plots laat zien dat scaling een duidelijk effect heeft op de data.
+Hoewel de verschillen tussen samples vóór scaling niet extreem groot zijn, is er wel sprake van variatie in spreiding en schaal. Na scaling zijn deze verschillen sterk verminderd, waardoor alle samples op een vergelijkbare schaal liggen.
+Dit is belangrijk voor MOFA+, omdat het model anders beïnvloed kan worden door eiwitten met grotere variatie of hogere absolute waarden.
+
+
+## Feature selectie
+
+Na het schalen van de data heb ik de volgende stap uitgevoerd: het selecteren van de meest informatieve eiwitten voor gebruik in MOFA+. Omdat de dataset veel meer eiwitten dan samples bevat, is het belangrijk om ruis te verminderen en de analyse te focussen op de belangrijkste variatie.
+
+```{r}
+vars <- apply(lfq_scaled, 1, var)
+
+summary(vars)
+
+```
+
+Omdat de data vooraf is geschaald met z-score normalisatie, is de variantie per eiwit gelijk gemaakt. Hierdoor is variantie geen geschikte maat meer om informatieve eiwitten te selecteren. In plaats daarvan is gebruik gemaakt van de PCA-analyse, die laat zien dat de dataset al duidelijke biologische structuur bevat en geen verdere filtering vereist.
+
+
+#### 26-05-2026
 
