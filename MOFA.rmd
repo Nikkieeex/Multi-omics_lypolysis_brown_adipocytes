@@ -1,0 +1,43 @@
+---
+title: "multiomics_analyse"
+author: "Joris"
+date: "`r Sys.Date()`"
+output: pdf_document
+---
+
+```{r setup}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(pheatmap)
+library(ggplot2)
+```
+
+```{r proteomics inladen en processing}
+proteomics <- read.delim("/students/2025-2026/Thema08/lipolyse/unpacked/proteomics//proteinGroups.txt") 
+
+lfq <- proteomics[, grep("LFQ.intensity", colnames(proteomics))]
+
+lfq[lfq == 0] <- NA
+
+lfq_log <- log2(lfq)
+
+proteomics$mean_0h <- rowMeans(proteomics[, grep("LFQ.intensity.0h", colnames(proteomics))],
+                         na.rm = TRUE)
+
+proteomics$mean_24h <- rowMeans(proteomics[, grep("LFQ.intensity.24h", colnames(proteomics))],
+                          na.rm = TRUE)
+
+proteomics$log2_fc <- log2((proteomics$mean_24h + 1) / (proteomics$mean_0h + 1))
+```
+
+```{r transcriptomics inladen en processing}
+transcriptomics <- read.csv('/students/2025-2026/Thema08/lipolyse/unpacked/transcriptomics/genormaliseerde_counts.csv')
+```
+
+```{r}
+head(proteomics)
+```
+```{r}
+library(MOFA2)
+```
