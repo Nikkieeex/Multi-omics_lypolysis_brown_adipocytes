@@ -16,6 +16,9 @@ library(Rsamtools)
 library(dplyr)
 library(tidyr)
 library(ggplot2)
+library(pheatmap)
+library(ggrepel)
+library(PCAtools)
 ```
 
 
@@ -103,6 +106,8 @@ counts <- read.delim(
 
 head(counts)
 str(counts)
+colnames(counts)
+dim(counts)
 ```
 
 De count tabel is ingelezen met read.delim(). Vervolgens is er met head() en str() gecontroleerd of de tabel correct is ingelezen. Ik krijg 57.186 features en 24 kolommen terug. De eerste kolommen bevatten geninformatie, zoals GeneID, Chr, start, end, strand en length. De rest van de kolommen bevatten de read counts per sample. Ik heb ook even gekeken naar de datatypes van de kolommen en deze zien er bruikbaar uit. De kolommen die de counts bevatten zijn integers en de kolom met de gen id is een character, dit is bruikbaar voor verdere verwerking. 
@@ -131,6 +136,10 @@ raw_long <- count_matrix %>%
     names_to = "sample",
     values_to = "count"
   )
+
+dim(raw_long)
+colnames(raw_long)
+head(rownames(raw_long))
 
 ggplot(raw_long, aes(x = sample, y = count)) + 
   geom_boxplot(outlier.size = 0.5) +
@@ -196,6 +205,8 @@ ggplot(library_df, aes(x = sample, y = library_size)) +
 
 De library size is bepaald om per sample alle reads bij elkaar op te tellen. In de staafdiagram is te zien dat er grote verschillen zijn in library size tussen de samples, een aantal samples hebben 2.0e+07 reads en sommigen hebben 5.0e+07 tot 6.0e+07 reads. Dit toont aan dat het niet eerlijk is om de sample counts direct met elkaar te vergelijken. Om deze reden ga ik een normalisatie uitvoeren om te corrigeren voor deze grote verschillen. 
 
+
+
 ```{r}
 cpm_counts <- sweep(
   count_matrix,
@@ -228,3 +239,556 @@ ggplot(log_cpm_long, aes(x = sample, y = log_cpm)) +
 Na de sample-normalisatie, waarbij de counts per sample gedeeld is door de totale library size van dat sample, waarna het vermenigvuldigd is met 1 miljoen. Vervolgens is er nog een log transformatie uitgevoerd zodat de verdeling beter zichtbaar is.
 
 In de boxplot na de sample-normalisatie zijn de samples beter met elkaar te vergelijken dan de ruwe counts. De verschillen in library size zijn nu gecorrigeerd, maar er zijn nog steeds outliers zichtbaar. Dit is niet te voorkomen, omdat sommige genen dusdanig meer tot expressie komen dan andere. Maar na deze normalisatie zijn de samples een stuk beter te vergelijken.
+
+Als laatste voer ik een feature-normalisatie uit met de z-score. Hierbij wordt per gen de gemiddelde expressie afgetrokken en gedeeld door de standaarddeviatie. Hierdoor worden de waarden per gen geschaald, zodat zichtbaar wordt welke samples relatief hoge of lage waarden hebben voor een bepaald gen. Deze stap is vooral nuttig om expressiepatronen tussen samples te vergelijken.
+
+
+
+
+
+```{r}
+z_counts <- t(scale(t(log_cpm)))
+
+z_counts <- z_counts[complete.cases(z_counts),]
+
+z_long <- as.data.frame(z_counts) %>%
+  mutate(Geneid = rownames(z_counts)) %>%
+  pivot_longer(
+    cols = -Geneid,
+    names_to = "sample",
+    values_to = "z_score"
+  )
+
+ggplot(z_long, aes(x = sample, y = z_score)) +
+  geom_boxplot(outlier.size = 0.5) +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+  labs(
+    title = "Verdeling na feature-normalisatie: z-score per gen",
+    x = "Sample",
+    y = "Z-score"
+  )
+```
+
+In de boxplot na de feature-normalisatie liggen de meeste samples redelijk rond een z-score van 0. De sample SRR32635416 valt duidelijk op omdat de verdeling lager ligt dan bij de andere samples. Dit betekent dat dit sample voor veel genen relatief lagere genormaliseerde waarden heeft dan de andere samples. Deze uitkomst maakt het interessant om dit sample wat uitgebreider te onderzoeken wat precies de reden is van deze afwijking. 
+
+Omdat de sample SRR32635416 zo opvallend is ga ik daar specifiek naar kijken. Ik ga een PCA uitvoeren op de getransformeerde CPM-data, waarbij dit sample specifiek gemarkeerd wordt.
+
+
+```{r}
+cat("log_cpm:", nrow(log_cpm), "features,", ncol(log_cpm), "samples\n")
+cat("Som log_cpm:", sum(as.matrix(log_cpm)), "\n")
+
+cat("z_counts:", nrow(z_counts), "features,", ncol(z_counts), "samples\n")
+cat("Som z_counts:", sum(as.matrix(z_counts)), "\n")
+```
+
+
+```{r}
+pca_logcpm_result <- prcomp(
+  t(log_cpm),
+  center = TRUE,
+  scale. = FALSE
+)
+
+pca_logcpm_variance <- pca_logcpm_result$sdev^2
+pca_logcpm_variance_percent <- round(
+  pca_logcpm_variance / sum(pca_logcpm_variance) * 100,
+  1
+)
+
+pca_logcpm_df <- data.frame(
+  sample = rownames(pca_logcpm_result$x),
+  PC1 = pca_logcpm_result$x[, 1],
+  PC2 = pca_logcpm_result$x[, 2]
+)
+
+pca_logcpm_df$sample_group <- ifelse(
+  grepl("SRR32635416", pca_logcpm_df$sample),
+  "SRR32635416",
+  "Overige samples"
+)
+
+ggplot(pca_logcpm_df, aes(x = PC1, y = PC2, color = sample_group)) +
+  geom_point(size = 3) +
+  geom_text(
+    aes(label = ifelse(sample_group == "SRR32635416", sample, "")),
+    vjust = -0.8,
+    size = 3,
+    show.legend = FALSE
+  ) +
+  theme_bw() +
+  labs(
+    title = "PCA van log2(CPM + 1) data",
+    x = paste0("PC1 (", pca_logcpm_variance_percent[1], "%)"),
+    y = paste0("PC2 (", pca_logcpm_variance_percent[2], "%)"),
+    color = "Sample"
+  )
+```
+In de PCA is wel te zien dat SRR3265416 zich onderscheidt van de andere samples op PC2. PC2 verklaart 3.6% van de variatie. Het ondersteunt wel de eerdere observatie dat deze sample op een bepaalde manier afwijkt van de rest. In de PCA is ook een ander sample die sterker afwijkt op PC1, die met 67.3% voor de meeste variatie zorgt. Deze sample is ook interessant om verder te bekijken. 
+
+Ik ga eerst kijken welke samples precies afwijken in de PCA. Hier krijg ik de namen van de samples.
+
+```{r}
+max_PC1 <- pca_logcpm_df[which.max(pca_logcpm_df$PC1), ]
+max_PC2 <- pca_logcpm_df[which.max(pca_logcpm_df$PC2), ]
+
+cat("Sample met de hoogste PC1-score:", max_PC1$sample, "\n")
+
+cat("Sample met de hoogste PC2-score:", max_PC2$sample)
+```
+
+Dit vertelt mij dat de sample met de hoogste PC1-score sample SRR32635421 is. De sample met de hoogste PC2-score is SRR32635416, die al eerder opviel en dit bevestigt nu dat deze sample afwijkt. 
+
+Aangezien dit stukje code werkt op de output van de pca die constant verandert, komt het niet overeen met wat er besproken wordt als resultaat. Bij het kopje "18-05-2026" is de correct werkende PCA te zien waar deze resultaten in terug te vinden zijn. 
+
+Er zijn nog enkele samples die enigsins buiten de groep liggen, maar omdat deze minder sterk afwijken en niet duidelijk naar voren kwamen in de eerdere analyses, worden deze niet afzonderlijk besproken. 
+
+Om erachter te komen waarom deze 2 samples zo afwijkend zijn, ga ik eerst naar de counts.txt.summary kijken. Deze is samen met de count tabel gemaakt door FeatureCount. 
+
+```{r}
+fc_summary <- read.delim(
+  "/students/2025-2026/Thema08/lipolyse/unpacked/transcriptomics/counts.txt.summary",
+  check.names = FALSE
+)
+
+fc_summary
+```
+
+Dit laat zien dat SRR32635416 28902814 assigned en 43622058 unassigned reads heeft. SRR32635421 heeft 17883374 assigned en 22911558 unassigned reads. Er lijkt verschil te zitten in de assigned vs unassigned reads voor elke sample, dus ik ga voor elke sample de percentage bepalen en deze plotten, waarbij ik de 2 opvallende samples uitlicht. 
+
+```{r}
+fc_long <- fc_summary %>%
+  pivot_longer(
+    cols = -Status,
+    names_to = "sample",
+    values_to = "reads"
+  )
+
+assignment_summary <- fc_long %>%
+  mutate(
+    assignment_group = ifelse(Status == "Assigned", "Assigned", "Unassigned")
+  ) %>%
+  group_by(sample, assignment_group) %>%
+  summarise(reads = sum(reads), .groups = "drop") %>%
+  group_by(sample) %>%
+  mutate(
+    total_reads = sum(reads),
+    percentage = round(reads / total_reads * 100, 2)
+  ) %>%
+  ungroup()
+
+unassigned_plot <- assignment_summary %>%
+  filter(assignment_group == "Unassigned") %>%
+  mutate(
+    opvallend_sample = case_when(
+      grepl("SRR32635416", sample) ~ "SRR32635416",
+      grepl("SRR32635421", sample) ~ "SRR32635421",
+      TRUE ~ "Overige samples"
+    ),
+    sample = reorder(sample, percentage)
+  )
+
+ggplot(unassigned_plot, aes(x = sample, y = percentage, fill = opvallend_sample)) +
+  geom_col() +
+  geom_text(
+    aes(label = paste0(percentage, "%")),
+    hjust = -0.1,
+    size = 3
+  ) +
+  coord_flip() +
+  theme_bw() +
+  ylim(0, max(unassigned_plot$percentage) + 5) +
+  labs(
+    title = "Percentage unassigned reads per sample",
+    x = "Sample",
+    y = "Unassigned reads (%)",
+    fill = "Sample"
+  )
+```
+
+In deze grafiek is duidelijk te zien dat SRR32635416 het hoogste percentage unassigned reads heeft. Dit is waarschijnlijk de reden waarom dit sample afwijkend is ten opzichte van de rest. Voor de sample SRR32635421, die de hoogste PC1-score heeft, is het percentage unassigned reads vergelijkbaar met de overige samples. Dit is voor dit sample dus niet verklarend en zal er verder gezocht moeten worden. 
+
+Omdat de percentage unassigned reads niks opvallends liet zien voor SRR32635421, ga ik nu kijken naar de afzonderlijke unassigned-categorieën. 
+
+```{r}
+fc_long_percentages <- fc_long %>%
+  group_by(sample) %>%
+  mutate(
+    total_reads = sum(reads),
+    percentage = round(reads / total_reads * 100, 2)
+  ) %>%
+  ungroup()
+
+fc_long_percentages %>%
+  filter(grepl("SRR32635421", sample)) %>%
+  arrange(desc(percentage))
+
+unassigned_detail_plot <- fc_long_percentages %>%
+  filter(
+    Status %in% c(
+      "Unassigned_NoFeatures",
+      "Unassigned_MultiMapping",
+      "Unassigned_Ambiguity"
+    )
+  ) %>%
+  mutate(
+    groep = case_when(
+      grepl("SRR32635416", sample) ~ "SRR32635416",
+      grepl("SRR32635421", sample) ~ "SRR32635421",
+      TRUE ~ "Overige samples"
+    )
+  )
+
+ggplot() +
+  geom_boxplot(
+    data = unassigned_detail_plot %>% filter(groep == "Overige samples"),
+    aes(x = reorder(Status, percentage), y = percentage),
+    outlier.size = 1
+  ) +
+  geom_point(
+    data = unassigned_detail_plot %>% filter(groep != "Overige samples"),
+    aes(
+      x = reorder(Status, percentage),
+      y = percentage,
+      color = groep
+    ),
+    size = 3
+  ) +
+  coord_flip() +
+  theme_bw() +
+  labs(
+    title = "Unassigned-categorieën van opvallende samples",
+    subtitle = "Punten = SRR32635416 en SRR32635421, boxplots = overige samples",
+    x = "Unassigned-categorie",
+    y = "Percentage van totaal aantal reads",
+    color = "Sample"
+  )
+```
+
+Deze plot toont aan dat er voor sample SRR32635421 nog geen duidelijke mogelijke reden is waarom deze zo afwijkt ten opzichte van de andere samples. De featureCounts-summary geeft dus geen duidelijke verklaring voor dit sample, dus er moet verder gekeken worden, bijvoorbeeld naar de aantal gedetecteerde genen per sample. Het was al duidelijk zichtbaar dat de sample SRR32635416 afweek van de overige samples, maar nu is het nog duidelijker dat het mogelijk de Unassigned_MultiMapping reads de oorzaak is van deze afwijking.
+
+Ik kijk naar de aantal gedetecteerde genen per sample door de genen te tellen die een count hebben die hoger is dan 0. Een afwijkend laag of hoog aantal gedetecteerde genen kan wijzen op een verschil in expressieprofiel in het sample. 
+
+```{r}
+detected_genes <- data.frame(
+  sample = colnames(count_matrix),
+  detected_genes = colSums(count_matrix > 0)
+) %>%
+  mutate(
+    opvallend_sample = case_when(
+      grepl("SRR32635416", sample) ~ "SRR32635416",
+      grepl("SRR32635421", sample) ~ "SRR32635421",
+      TRUE ~ "Overige samples"
+    ),
+    sample = reorder(sample, detected_genes)
+  )
+
+ggplot(detected_genes, aes(x = sample, y = detected_genes, fill = opvallend_sample)) +
+  geom_col() +
+  geom_text(
+    aes(label = detected_genes),
+    hjust = -0.1,
+    size = 3
+  ) +
+  coord_flip() +
+  theme_bw() +
+  ylim(0, max(detected_genes$detected_genes) + 3000) +
+  labs(
+    title = "Aantal gedetecteerde genen per sample",
+    x = "Sample",
+    y = "Aantal genen met count > 0",
+    fill = "Sample"
+  )
+```
+
+In deze grafiek is te zien dat SRR32635421 een redelijk laag aantal genen heeft met een count hoger dan 0, maar er zijn 3 samples die lager zijn, waaronder SRR32635416 die eerder al opviel. Dit is dus niet direct de oorzaak waarom sample SRR32635421 zo afwijkend is.
+
+Ik ga nog een laatste check doen voor SRR32635421. Dit sample heeft wel een relatief laag aantal gedetecteerde samples, maar dit verklaart niet volledig waarom dit sample sterk afwijkt op PC1. Daarom ga ik kijken naar de genen die het meest bijdraagt aan PC1. PC1 verklaart de hoogste variatie in de dataset. Door de hoogste positieve en negatieve loadings van PC1 te bekijken, kan worden onderzocht welke genen vooral verantwoordelijk zijn voor de scheiding van samples langs deze component.
+
+```{r}
+pc1_loadings <- pca_tools_result$loadings[, 1]
+
+names(pc1_loadings) <- rownames(pca_tools_result$loadings)
+
+pc1_loadings <- pc1_loadings[is.finite(pc1_loadings)]
+
+top_pc1_positive <- sort(pc1_loadings, decreasing = TRUE)[1:20]
+
+top_pc1_negative <- sort(pc1_loadings, decreasing = FALSE)[1:20]
+
+top_pc1_positive
+top_pc1_negative
+```
+
+Dit zijn de genen die het meest bijdragen aan PC1, ik ga nu kijken of deze genen erg opvallen bij SRR32635421.
+
+```{r}
+top_pc1_genes_heatmap <- c(
+  names(top_pc1_positive),
+  names(top_pc1_negative)
+)
+
+
+# Heatmapwaarden uit z_counts of pca_tools_matrix halen
+pc1_heatmap_values <- pca_tools_matrix[top_pc1_genes_heatmap, ]
+
+# PCA-scores van samples ophalen
+pca_tools_scores <- as.data.frame(pca_tools_result$rotated)
+pca_tools_scores$sample <- rownames(pca_tools_scores)
+
+# Samples ordenen op PC1
+sample_order <- pca_tools_scores %>%
+  arrange(PC1) %>%
+  pull(sample)
+
+pc1_heatmap_values <- pc1_heatmap_values[, sample_order]
+
+sample_annotation <- data.frame(
+  Sample = case_when(
+    colnames(pc1_heatmap_values) == "SRR32635421" ~ "SRR32635421",
+    colnames(pc1_heatmap_values) == "SRR32635416" ~ "SRR32635416",
+    TRUE ~ "Overige samples"
+  )
+)
+
+rownames(sample_annotation) <- colnames(pc1_heatmap_values)
+
+pheatmap(
+  pc1_heatmap_values,
+  scale = "row",
+  cluster_cols = FALSE,
+  annotation_col = sample_annotation,
+  fontsize_row = 6,
+  fontsize_col = 7,
+  angle_col = 45,
+  main = "Top 40 genen die het sterkst bijdragen aan PC1"
+)
+```
+
+In de heatmap is te zien dat SRR32635421 een ander expressiepatroon heeft dan de meeste andere samples voor de genen die het sterkst bijdragen aan PC1. Dit ondersteunt de PCA waarbij dit sample afweek van de rest. Vooral bij meerdere genen lijkt SRR32635421 relatief hogere expressiewaarden te hebben dan de meeste andere samples.
+
+Ook SRR32635416 laat een afwijkend patroon zien, wat overeenkomt met de eerdere observatie in de PCA.
+
+```{r}
+# Data omzetten: samples in rijen, genen/features in kolommen
+P <- t(z_counts)
+
+# PCA berekenen via de samplematrix
+R <- (P %*% t(P)) / (nrow(P) - 1)
+eig <- eigen(R)
+
+# Kleine negatieve eigenwaarden door afronding op 0 zetten
+eig$values[eig$values < 0] <- 0
+
+# PCA-scores van de samples berekenen
+scores <- eig$vectors %*% diag(sqrt(eig$values))
+
+# Percentage verklaarde variantie
+var_pct <- round(eig$values / sum(eig$values) * 100, 1)
+
+# Dataframe maken voor de plot
+pca_plot <- data.frame(
+  sample = rownames(P),
+  PC1 = scores[, 1],
+  PC2 = scores[, 2]
+)
+
+# Alleen SRR-nummer uit de sample-naam halen
+pca_plot$sample_id <- sub("_Aligned.*", "", pca_plot$sample)
+
+# Tijdstip toevoegen
+pca_plot$tijdstip <- dplyr::case_when(
+  pca_plot$sample_id %in% c(
+    "SRR32635427", "SRR32635428", "SRR32635429",
+    "SRR32635430", "SRR32635431", "SRR32635432"
+  ) ~ "0 h",
+  
+  pca_plot$sample_id %in% c(
+    "SRR32635421", "SRR32635422", "SRR32635423",
+    "SRR32635424", "SRR32635425", "SRR32635426"
+  ) ~ "4 h",
+  
+  pca_plot$sample_id %in% c(
+    "SRR32635415", "SRR32635416", "SRR32635417",
+    "SRR32635418", "SRR32635419", "SRR32635420"
+  ) ~ "24 h"
+)
+
+# PCA-plot
+ggplot(pca_plot, aes(x = PC1, y = PC2, color = tijdstip)) +
+  geom_point(size = 3) +
+  theme_bw() +
+  labs(
+    title = "PCA van gestandaardiseerde transcriptomicsdata",
+    x = paste0("PC1 (", var_pct[1], "%)"),
+    y = paste0("PC2 (", var_pct[2], "%)"),
+    color = "Tijdstip"
+  )
+```
+
+#### 18-05-2026
+Afgelopen weekend ben ik erachter gekomen dat mijn pca elke keer verandert wanneer ik deze uitvoer. Janine heeft mij daarmee geholpen om een tool te vinden die PCA kan maken die constant blijft. Dit is gelukkig gelukt met de library PCAtools. De code heb ik uit haar logboek overgenomen omdat deze uitkomst nodig is voor een van de onderbouwingen voor de afwijkende samples. Deze samples heb ik ook gevonden bij de eerste keer dat ik de PCA heb gemaakt. Dus de onderzoek naar waarom de samples afwijken kunnen nog steeds gebruikt worden. In de code heb ik wel een aantal variabelen aangepast zodat ik geen overlap heb met de oude PCA plots
+
+```{r}
+pca_tools_matrix <- as.matrix(z_counts)
+
+colnames(pca_tools_matrix) <- basename(colnames(pca_tools_matrix))
+
+colnames(pca_tools_matrix) <- gsub(
+  "_Aligned.sortedByCoord.out.bam",
+  "",
+  colnames(pca_tools_matrix)
+)
+
+pca_tools_metadata <- data.frame(
+  sample = c(
+    "SRR32635427", "SRR32635428", "SRR32635429",
+    "SRR32635430", "SRR32635431", "SRR32635432",
+    "SRR32635421", "SRR32635422", "SRR32635423",
+    "SRR32635424", "SRR32635425", "SRR32635426",
+    "SRR32635415", "SRR32635416", "SRR32635417",
+    "SRR32635418", "SRR32635419", "SRR32635420"
+  ),
+  group = c(
+    "0 h", "0 h", "0 h",
+    "0 h", "0 h", "0 h",
+    "4 h", "4 h", "4 h",
+    "4 h", "4 h", "4 h",
+    "24 h", "24 h", "24 h",
+    "24 h", "24 h", "24 h"
+  )
+)
+
+rownames(pca_tools_metadata) <- pca_tools_metadata$sample
+
+pca_tools_metadata <- pca_tools_metadata[colnames(pca_tools_matrix), ]
+
+identical(colnames(pca_tools_matrix), rownames(pca_tools_metadata))
+
+pca_tools_result <- pca(
+  mat = as.matrix(pca_tools_matrix),
+  metadata = pca_tools_metadata,
+  removeVar = 0.1
+)
+
+pca_tools_labels <- ifelse(
+  rownames(pca_tools_metadata) %in% c("SRR32635416", "SRR32635421"),
+  rownames(pca_tools_metadata),
+  ""
+)
+
+biplot(
+  pca_tools_result,
+  colby = "group",
+  lab = pca_tools_labels,
+  labSize = 3
+)
+```
+#### 22-05-2026
+
+In deze PCA is te zien dat SRR32635416 juist het meeste afwijkt op PC1 en sample SRR32635421 het meest afwijkt op PC2. Het bewijst nogsteeds dat deze samples afwijkend zijn, maar alleen de heatmap op de genen die het meeste invloed hebben op PC1 wijst voor de sample SRR32635421 niks meer uit. Om deze reden voer ik het nog even snel op de genen die het meeste invloed hebben op PC2 uit, en dit vergelijk ik dan met de heatmap van de top 40 van de PC1 genen. 
+```{r}
+pc2_loadings <- pca_tools_result$loadings[, 2]
+
+names(pc2_loadings) <- rownames(pca_tools_result$loadings)
+
+pc2_loadings <- pc2_loadings[is.finite(pc2_loadings)]
+
+top_pc2_positive <- sort(pc2_loadings, decreasing = TRUE)[1:20]
+top_pc2_negative <- sort(pc2_loadings, decreasing = FALSE)[1:20]
+
+top_pc2_genes_heatmap <- c(
+  names(top_pc2_positive),
+  names(top_pc2_negative)
+)
+
+top_pc2_genes_heatmap <- top_pc2_genes_heatmap[
+  top_pc2_genes_heatmap %in% rownames(pca_tools_matrix)
+]
+
+length(top_pc2_genes_heatmap)
+
+pc2_heatmap_values <- pca_tools_matrix[top_pc2_genes_heatmap, , drop = FALSE]
+
+pca_tools_scores <- as.data.frame(pca_tools_result$rotated)
+pca_tools_scores$sample <- rownames(pca_tools_scores)
+
+sample_order_pc2 <- pca_tools_scores %>%
+  arrange(PC2) %>%
+  pull(sample)
+
+pc2_heatmap_values <- pc2_heatmap_values[, sample_order_pc2, drop = FALSE]
+
+sample_annotation_pc2 <- data.frame(
+  Sample = case_when(
+    colnames(pc2_heatmap_values) == "SRR32635421" ~ "SRR32635421",
+    colnames(pc2_heatmap_values) == "SRR32635416" ~ "SRR32635416",
+    TRUE ~ "Overige samples"
+  )
+)
+
+rownames(sample_annotation_pc2) <- colnames(pc2_heatmap_values)
+
+pheatmap(
+  pc2_heatmap_values,
+  scale = "row",
+  cluster_cols = FALSE,
+  annotation_col = sample_annotation_pc2,
+  fontsize_row = 6,
+  fontsize_col = 7,
+  angle_col = 45,
+  main = "Top 40 genen die het sterkst bijdragen aan PC2"
+)
+```
+De heatmap met de top 40 genen die het sterkst bijdragen aan PC2 is duidelijk te zien dat sample SRR32635421 een zeer afwijkend expressiepatroon heeft vergeleken met de andere samples. SRR32635415 is ook een opvallende sample qua expressiepatroon, maar die heeft een stuk minder genen die een hoge expressie hebben. Dit resultaat ondersteunt de reden waarom sample SRR32635421 afwijkt van de overige samples. 
+
+Deze heatmap samen met de heatmap van de top 40 genen die het sterkst bijdragen aan PC1 geeft een duidelijke reden waarom sample SRR32635416 en SRR32635421 afwijken van de andere samples.
+
+#### 26-05-2026
+
+Vandaag maak ik de matrix zodat Joris de MOFA+ tool kan gebruiken. Voor uitleg over deze tool verwijs ik u graag naar zijn logboek. 
+
+```{r}
+transcriptomics_matrix <- as.matrix(z_counts)
+mode(transcriptomics_matrix) <- "numeric"
+
+colnames(transcriptomics_matrix) <- basename(colnames(transcriptomics_matrix))
+
+colnames(transcriptomics_matrix) <- gsub(
+  "_Aligned.sortedByCoord.out.bam",
+  "",
+  colnames(transcriptomics_matrix)
+)
+
+write.csv(
+  transcriptomics_matrix,
+  "/students/2025-2026/Thema08/lipolyse/unpacked/transcriptomics/transcriptomics_matrix.csv"
+)
+
+# Controles
+cat("Controle van de transcriptomics matrix voor MOFA+\n")
+cat("------------------------------------------------\n\n")
+
+cat("Dimensies van de matrix:\n")
+cat("Aantal genen/features:", nrow(transcriptomics_matrix), "\n")
+cat("Aantal samples:", ncol(transcriptomics_matrix), "\n\n")
+
+cat("Eerste 6 genen/features:\n")
+print(head(rownames(transcriptomics_matrix)))
+
+cat("\nEerste 6 samples:\n")
+print(head(colnames(transcriptomics_matrix)))
+
+cat("\nControle op ontbrekende of niet-eindige waarden:\n")
+cat("Aantal NA-waarden:", sum(is.na(transcriptomics_matrix)), "\n")
+cat("Aantal NaN-waarden:", sum(is.nan(transcriptomics_matrix)), "\n")
+cat("Aantal Inf-waarden:", sum(is.infinite(transcriptomics_matrix)), "\n\n")
+
+cat("Controle matrixstructuur:\n")
+cat("Objectklasse:", class(transcriptomics_matrix), "\n")
+cat("Datamodus:", mode(transcriptomics_matrix), "\n")
+```
+
+De feature matrix is nu gemaakt. Ik heb hiervoor de volledig genormaliseerde count data gebruikt die ik gemaakt heb bij mijn EDA. In de matrix heb ik de samples als kolommen en de features/genen als rijen opgeslagen. Tijdens het normaliseren ben ik een aantal features kwijt geraakt, dit zijn mogelijk genen die over elke sample dezelfde waarde heeft. Verder is ook te zien dat mijn matrix geen NA-, NaN-, of Inf-waarden bevatten. Dit betekent dat er geen waarden zijn die problemen gaan veroorzaken bij de verdere MOFA+-analyse.
+
