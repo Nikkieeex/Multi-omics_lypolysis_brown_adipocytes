@@ -3,6 +3,11 @@ title: "Logboek_NicoleB"
 output: html_document
 ---
 
+## Logboek samenvatting
+
+In dit logboek
+
+
 
 #### 20-04-2026
 Als start heb ik met mijn groepje overlegd wat onze waarden zijn. Op basis daarvan heb ik deze samenwerkingsovereenkomst gemaakt:
@@ -238,7 +243,6 @@ boxplot(lfq_log,
 Er zijn hier ook geen samples die afwijken dus we gaan door 
 
 
-
 ```{r}
 top_proteins <- data %>%
   select(Gene.names, starts_with("LFQ.intensity")) %>%
@@ -248,6 +252,7 @@ top_proteins <- data %>%
 
 head(top_proteins[, c("Gene.names", "mean_intensity")], 20)
 ```
+
 
 
 
@@ -550,4 +555,191 @@ Omdat de data vooraf is geschaald met z-score normalisatie, is de variantie per 
 
 
 #### 26-05-2026
+
+Na het uitvoeren van log-transformatie, controle op missing values en scaling, heb ik een uiteindelijke data matrix verkregen:
+
+```{r}
+dim(lfq_scaled)
+```
+
+Matrix een naampje geven
+```{r}
+proteomics_matrix <- lfq_scaled
+```
+
+Ik ga nu noteren wat ik heb gedaan in onze paper
+```{r}
+head(proteomics_matrix)
+```
+
+
+z scores benoemen nog
+
+haal nullen weg
+
+
+#### 28-05-2026
+
+matrix rows aanpassen zodat ze matchen met transcriptomics matrix
+```{r}
+file.exists("/students/2025-2026/Thema08/lipolyse/unpacked/proteomics//proteinGroups.txt") # Als er True staat bestaat het pad
+data <- read.delim("/students/2025-2026/Thema08/lipolyse/unpacked/proteomics//proteinGroups.txt") 
+
+colnames(data)
+```
+
+```{r}
+head(data$Gene.names)
+```
+
+```{r}
+library(biomaRt)
+
+mart <- useEnsembl(
+  biomart = "genes",
+  dataset = "hsapiens_gene_ensembl",
+  version = 108   # try 108, 110 if needed
+) # auto-pick mirror want ensemble site was down
+
+mapping <- getBM(
+  attributes = c(
+    "external_gene_name",
+    "ensembl_gene_id"
+  ),
+  filters = "external_gene_name",
+  values = unique(data$Gene.names),
+  mart = mart
+)
+
+head(mapping)
+```
+```{r}
+library(dplyr)
+library(biomaRt)
+
+data <- as.data.frame(data)
+proteomics_matrix <- as.data.frame(proteomics_matrix)
+
+# Extract LFQ data FIRST (before anything breaks column names)
+lfq_matrix <- data %>%
+  dplyr::select(starts_with("LFQ.intensity"))
+
+# Add RowID
+data$RowID <- seq_len(nrow(data))
+
+# Extract gene info
+gene_info <- data %>%
+  dplyr::select(RowID, Gene.names)
+
+gene_info$GeneSymbol <- sapply(
+  strsplit(as.character(gene_info$Gene.names), ";"),
+  `[`,
+  1
+)
+
+# Ensembl connection
+mart <- useEnsembl(
+  biomart = "genes",
+  dataset = "mmusculus_gene_ensembl",
+  version = 108
+)
+
+mapping <- getBM(
+  attributes = c("external_gene_name", "ensembl_gene_id"),
+  filters = "external_gene_name",
+  values = unique(gene_info$GeneSymbol),
+  mart = mart
+)
+
+mapping <- mapping %>%
+  dplyr::distinct(external_gene_name, .keep_all = TRUE)
+
+gene_info <- dplyr::left_join(
+  gene_info,
+  mapping,
+  by = c("GeneSymbol" = "external_gene_name")
+)
+
+# Add RowID to LFQ matrix
+lfq_matrix$RowID <- seq_len(nrow(lfq_matrix))
+
+# Merge IDs into LFQ data
+proteomics_matrix <- dplyr::left_join(
+  lfq_matrix,
+  gene_info[, c("RowID", "ensembl_gene_id")],
+  by = "RowID"
+)
+
+# Clean
+proteomics_matrix <- proteomics_matrix %>%
+  dplyr::filter(!is.na(ensembl_gene_id))
+
+proteomics_matrix <- proteomics_matrix[
+  !duplicated(proteomics_matrix$ensembl_gene_id),
+]
+
+# Set rownames
+rownames(proteomics_matrix) <- proteomics_matrix$ensembl_gene_id
+
+# Remove helper columns
+proteomics_matrix <- proteomics_matrix %>%
+  dplyr::select(-RowID, -ensembl_gene_id)
+
+# Final check
+dim(proteomics_matrix)
+head(proteomics_matrix)
+head(rownames(proteomics_matrix))
+
+```
+eiwitten zonder gene match zijn weggegooid...
+
+```{r}
+head(proteomics_matrix, 50)
+```
+```{r}
+# NA (missing values) check
+cat("Aantal NA vóór filtering:\n")
+sum(is.na(lfq_matrix))
+
+cat("Aantal NA na filtering:\n")
+sum(is.na(proteomics_matrix))
+
+# Percentage NA
+cat("Percentage NA vóór:\n")
+mean(is.na(lfq_matrix))
+
+cat("Percentage NA na:\n")
+mean(is.na(proteomics_matrix))
+
+# Aantal zeros check
+cat("Aantal 0 vóór:\n")
+sum(lfq_matrix == 0, na.rm = TRUE)
+
+cat("Aantal 0 na:\n")
+sum(proteomics_matrix == 0, na.rm = TRUE)
+
+# Percentage zeros
+cat("Percentage 0 vóór:\n")
+mean(lfq_matrix == 0, na.rm = TRUE)
+
+cat("Percentage 0 na:\n")
+
+```
+
+
+Let op Joris als je ML gebruikt zorg dat 0 waardes okay zijn want 30% is 0 anders vervangen door kleine waardes
+
+```{r}
+proteomics_matrix_imp <- proteomics_matrix
+proteomics_matrix_imp[proteomics_matrix_imp == 0] <- NA
+
+# vervang NA met kleine waarde
+min_val <- min(proteomics_matrix_imp, na.rm = TRUE)
+
+proteomics_matrix_imp[is.na(proteomics_matrix_imp)] <- min_val * 0.5
+head(proteomics_matrix_imp, 50)
+```
+Lage getallen inplaats van nullen
+
+
 
