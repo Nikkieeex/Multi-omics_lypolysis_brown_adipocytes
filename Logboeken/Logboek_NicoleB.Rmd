@@ -731,3 +731,133 @@ Ik heb weer een PVA gemaakt over de laatste stappen van ons project. Deze is te 
 * Exporteer de lijsten met: gen ID / gene symbol + log2FC + p-value + padj.
 * Maak een overlap-lijst met de DEG-lijsten van Joris (welke genen komen in beide voor).
 
+
+#### 30-05-2026
+
+MetaScape kan geen nans hebben, maar die zijn er vanaf begin al uit en werkt met ensemble IDs
+
+```{r}
+library(limma)
+library(tidyverse)
+
+dim(proteomics_matrix)
+head(rownames(proteomics_matrix))
+```
+De row names zijn ensemble ID dus top
+
+
+We gaan Limma gebruiken. Limma spoort statistisch significante verschillen op in genexpressie tussen verschillende biologische groepen. Bij ons dus de tijdsgroepen.
+
+Door het Empirical Bayes-algoritme deelt Limma variantie-informatie over alle eiwitten heen. Dit voorkomt fouten (valse positieven) wanneer je slechts 3 of 4 herhalingen (replicates) per groep hebt
+
+
+```{r}
+
+prot_clean <- proteomics_matrix_imp
+prot_clean[prot_clean == 0] <- NA
+prot_log <- log2(as.matrix(prot_clean))
+min_log_val <- min(prot_log, na.rm = TRUE)
+prot_log[is.na(prot_log)] <- min_log_val - 1
+
+cat("Waardenbereik prot_log:", range(prot_log, na.rm = TRUE))
+
+```
+
+Voordat ik limma uitvoerde wilde ik eerst controleren of de matrix die ik aanmaak wel de juiste waarden bevat. Dit doe ik omdat ik eerder problemen had met de preprocessing stappen waarbij nullen werden vervangen door kleine waarden voordat de log2 transformatie was uitgevoerd. Hierdoor kwamen er extreme log2FC waarden uit (tot 1.5e+10) die duidelijk niet klopten.
+
+```{r}
+
+group <- factor(c(rep("h0",6), rep("h24",6), rep("h4",6)), levels = c("h0", "h4", "h24")) # kolommen stonden eerst in de war hehehe dit was de nodige fix
+design <- model.matrix(~0 + group)
+colnames(design) <- levels(group)
+
+contr.matrix <- makeContrasts(
+  h4_vs_h0  = h4  - h0,
+  h24_vs_h0 = h24 - h0,
+  h24_vs_h4 = h24 - h4,
+  levels = design
+)
+
+fit  <- lmFit(prot_log, design)
+fit2 <- contrasts.fit(fit, contr.matrix)
+fit2 <- eBayes(fit2, trend = TRUE)
+
+# Step 4: Check FC distribution looks reasonable
+dap_4vs0 <- topTable(fit2, coef = "h4_vs_h0", number = Inf, adjust.method = "BH")
+hist(dap_4vs0$logFC, breaks = 100, main = "Distribution of log2FC (4h vs 0h)")
+# Expect values roughly between -5 and +5
+```
+```{r}
+cat("Value range:", range(prot_log, na.rm = TRUE), "\n")
+cat("Expected: roughly 10 to 40 for LFQ log2 intensities\n")
+cat("Dimensions:", dim(prot_log), "\n")  # Should be ~proteins x 18 samples
+```
+Dit ziet er goed uit geen gekke e nummers
+
+
+```{r}
+dap_4vs0$ensembl_gene_id  <- rownames(dap_4vs0)
+dap_24vs0$ensembl_gene_id <- rownames(dap_24vs0)
+dap_24vs4$ensembl_gene_id <- rownames(dap_24vs4)
+
+dap_4vs0  <- dap_4vs0[,  c("ensembl_gene_id", "logFC", "P.Value", "adj.P.Val")]
+dap_24vs0 <- dap_24vs0[, c("ensembl_gene_id", "logFC", "P.Value", "adj.P.Val")]
+dap_24vs4 <- dap_24vs4[, c("ensembl_gene_id", "logFC", "P.Value", "adj.P.Val")]
+
+all_daps <- rbind(
+  cbind(dap_4vs0,  comparison = "4h_vs_0h"),
+  cbind(dap_24vs0, comparison = "24h_vs_0h"),
+  cbind(dap_24vs4, comparison = "24h_vs_4h")
+)
+
+sig_daps <- all_daps[all_daps$adj.P.Val < 0.05 & abs(all_daps$logFC) > 1, ]
+print(paste("Significante DAPs:", nrow(sig_daps)))
+
+write.csv(dap_4vs0,  "DAP_4h_vs_0h.csv",  row.names = FALSE)
+write.csv(dap_24vs0, "DAP_24h_vs_0h.csv", row.names = FALSE)
+write.csv(dap_24vs4, "DAP_24h_vs_4h.csv", row.names = FALSE)
+write.csv(all_daps,  "All_DAPs_combined.csv", row.names = FALSE)
+```
+DAPs!
+
+
+
+```{r}
+summary(dap_4vs0$logFC)
+```
+
+mediaan is 0??? zoek dit nog uit
+
+
+
+
+```{r}
+sig_daps[order(abs(sig_daps$logFC), decreasing = TRUE), ]
+```
+
+```{r}
+library(biomaRt)
+mart <- useEnsembl(biomart = "genes", dataset = "mmusculus_gene_ensembl", version = 108)
+
+id_mapping <- getBM(
+  attributes = c("ensembl_gene_id", "external_gene_name"),
+  filters = "ensembl_gene_id",
+  values = sig_daps$ensembl_gene_id,
+  mart = mart
+)
+
+sig_daps_named <- merge(sig_daps, id_mapping, by = "ensembl_gene_id", all.x = TRUE)
+sig_daps_named[order(abs(sig_daps_named$logFC), decreasing = TRUE), ]
+```
+
+Hier wat gene names 
+
+
+
+
+
+
+
+
+
+
