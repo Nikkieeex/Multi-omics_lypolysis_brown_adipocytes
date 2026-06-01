@@ -1,0 +1,336 @@
+---
+title: "multiomics_analyse"
+author: "Joris"
+date: "`r Sys.Date()`"
+output: pdf_document
+---
+
+```{r setup}
+knitr::opts_chunk$set(echo = TRUE)
+
+# CRAN-packages
+cran_packages <- c(
+  "tidyverse",
+  "pheatmap",
+  "fgsea",
+  "msigdbr",
+  "ggrepel",
+  "UpSetR",
+  "grid"
+)
+
+# Installeer alleen ontbrekende packages
+missing_cran <- cran_packages[!(cran_packages %in% installed.packages()[, "Package"])]
+
+if (length(missing_cran) > 0) {
+  install.packages(missing_cran)
+}
+
+# BiocManager installeren indien nodig
+if (!requireNamespace("BiocManager", quietly = TRUE)) {
+  install.packages("BiocManager")
+}
+
+# Bioconductor-packages
+bioc_packages <- c(
+  "limma",
+  "edgeR",
+  "DESeq2",
+  "EnhancedVolcano"
+)
+
+# Installeer alleen ontbrekende Bioconductor-packages
+missing_bioc <- bioc_packages[!(bioc_packages %in% installed.packages()[, "Package"])]
+
+if (length(missing_bioc) > 0) {
+  BiocManager::install(missing_bioc)
+}
+```
+
+```{r}
+library(tidyverse)
+library(pheatmap)
+library(fgsea)
+library(msigdbr)
+library(ggrepel)
+library(UpSetR)
+library(grid)
+library(VennDiagram)
+
+library(limma)
+library(edgeR)
+library(DESeq2)
+library(EnhancedVolcano)
+```
+
+```{r Transcriptomics inladen}
+transcriptomics_df <- read.csv2(
+  "/students/2025-2026/Thema08/lipolyse/unpacked/transcriptomics/transcriptomics_counts_matrix.csv",
+  sep = ","
+)
+
+rownames(transcriptomics_df) <- transcriptomics_df[,1]
+transcriptomics_df <- transcriptomics_df[,-1]
+
+transcriptomics_matrix <- as.matrix(transcriptomics_df)
+```
+
+```{r Proteomics inladen}
+proteomics_df <- read.csv2(
+  "/students/2025-2026/Thema08/lipolyse/unpacked/proteomics/proteomics_matrix.csv",
+  sep = ","
+)
+
+rownames(proteomics_df) <- proteomics_df[,1]
+proteomics_df <- proteomics_df[,-1]
+
+proteomics_matrix <- as.matrix(proteomics_df)
+```
+
+```{r Intersect genen}
+common_genes <- intersect(
+  rownames(proteomics_matrix),
+  rownames(transcriptomics_matrix)
+)
+
+prot <- proteomics_matrix
+rna <- transcriptomics_matrix
+
+prot <- apply(prot, 2, as.numeric)
+#rna <- apply(rna, 2, as.numeric)
+
+rna <- subset( rna, select = -c(SRR32635416, SRR32635421 ) )
+```
+
+```{r}
+colnames(rna)
+colnames(prot)
+```
+
+```{r}
+head(rownames(transcriptomics_matrix))
+```
+
+```{r Groepen aanwijzen RNA}
+sample_info_rna <- data.frame(
+  row.names = colnames(rna),
+  condition = factor(c(
+    "A", # 415
+    "C", # 417
+    "A",
+    "B",
+    "C", # 420
+    "B", # 422
+    "C",
+    "A",
+    "B", # 425
+    "C",
+    "A",
+    "B",
+    "C",
+    "A", # 430
+    "B",
+    "C"
+  ))
+)
+
+sample_info_rna
+```
+
+```{r DDS RNA}
+dds_rna <- DESeqDataSetFromMatrix(
+  countData = round(rna),
+  colData = sample_info_rna,
+  design = ~ 0 + condition
+)
+```
+
+```{r}
+dds_rna <- DESeq(dds_rna)
+resultsNames(dds_rna)
+```
+
+```{r}
+res_AB_rna <- results(dds_rna, contrast = c("condition", "A", "B"), alpha = 0.05)
+res_AC_rna <- results(dds_rna, contrast = c("condition", "A", "C"), alpha = 0.05)
+res_BC_rna <- results(dds_rna, contrast = c("condition", "B", "C"), alpha = 0.05)
+```
+
+```{r}
+sig_AB_rna <- rownames(subset(as.data.frame(res_AB_rna), padj < 0.05))
+
+sig_AC_rna <- rownames(subset(as.data.frame(res_AC_rna), padj < 0.05))
+
+sig_BC_rna <- rownames(subset(as.data.frame(res_BC_rna), padj < 0.05))
+```
+
+```{r}
+length(sig_AB_rna)
+length(sig_AC_rna)
+length(sig_BC_rna)
+```
+
+```{r Groepen aanwijzing PROT}
+group <- factor(c(
+  rep("A", 6),
+  rep("B", 6),
+  rep("C", 6)
+))
+```
+
+```{r limma design}
+design <- model.matrix(~0 + group)
+
+colnames(design) <- levels(group)
+
+design
+```
+
+```{r linear model fit}
+fit <- lmFit(prot, design)
+```
+
+```{r contrast def}
+contrast.matrix <- makeContrasts(
+  A_vs_B = A - B,
+  A_vs_C = A - C,
+  B_vs_C = B - C,
+  levels = design
+)
+```
+
+```{r contrast fit}
+fit2 <- contrasts.fit(fit, contrast.matrix)
+
+fit2 <- eBayes(fit2)
+```
+
+```{r resultaten limma}
+res_AB_prot <- topTable(
+  fit2,
+  coef = "A_vs_B",
+  number = Inf
+)
+
+res_AC_prot <- topTable(
+  fit2,
+  coef = "A_vs_C",
+  number = Inf
+)
+
+res_BC_prot <- topTable(
+  fit2,
+  coef = "B_vs_C",
+  number = Inf
+)
+```
+
+```{r significante eiwitten}
+sig_AB_prot <- rownames(
+  subset(
+    res_AB_prot,
+    adj.P.Val < 0.05 & abs(logFC) > 1
+  )
+)
+
+sig_AC_prot <- rownames(
+  subset(
+    res_AC_prot,
+    adj.P.Val < 0.05 & abs(logFC) > 1
+  )
+)
+
+sig_BC_prot <- rownames(
+  subset(
+    res_BC_prot,
+    adj.P.Val < 0.05 & abs(logFC) > 1
+  )
+)
+```
+
+```{r}
+length(sig_AB_prot)
+length(sig_AC_prot)
+length(sig_BC_prot)
+```
+
+```{r}
+common_AB <- intersect(
+  res_AB_rna,
+  sig_AB_prot
+)
+
+length(common_AB)
+```
+
+```{r}
+sets <- list(
+  RNA_AB  = sig_AB_rna,
+  RNA_AC  = sig_AC_rna,
+  RNA_BC  = sig_BC_rna,
+  PROT_AB = sig_AB_prot,
+  PROT_AC = sig_AC_prot,
+  PROT_BC = sig_BC_prot
+)
+
+upset(
+  fromList(sets),
+  nsets = 6,
+
+  # Aslebels
+  mainbar.y.label = "Aantal significante overlappende genen",
+  sets.x.label = "Aantal significante genen per vergelijking",
+
+  # Ordening
+  order.by = "freq",
+  keep.order = TRUE,
+
+  # Kleurtjes
+  sets.bar.color = "#2C3E50",
+  main.bar.color = "#E74C3C",
+
+  # Tekst schaal
+  text.scale = c(1.5, 1.4, 1.2, 1.2, 1.3, 1.3),
+
+  # Layout
+  mb.ratio = c(0.6, 0.4)
+)
+
+# Titel
+grid.text(
+  "Overlap van significante genen tussen RNA- en proteïne-datasets",
+  x = 0.5, y = 0.98,
+  gp = gpar(fontsize = 14, fontface = "bold")
+)
+``` 
+
+```{r}
+venn.plot <- venn.diagram(
+  x = sets[1:3],
+  filename = NULL,
+  fill = c('red', 'blue', 'orange'),
+  alpha = 0.5,
+  cex = 1.5,
+  cat.cex = 1.2,
+  main = "Overlap van significante genen tussen RNA datasets"
+)
+grid::grid.draw(venn.plot)
+```
+
+```{r}
+venn.plot <- venn.diagram(
+  x = sets[4:6],
+  filename = NULL,
+  fill = c('green', 'pink', 'grey'),
+  alpha = 0.5,
+  cex = 1.5,
+  cat.cex = 1.2,
+  main = "Overlap van significante genen tussen proteïne datasets"
+)
+grid::grid.draw(venn.plot)
+```
+
+```{r}
+plotCounts(dds_rna, 'ENSMUSG00000054200', intgroup = 'condition')
+```
+
