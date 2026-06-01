@@ -1,0 +1,863 @@
+---
+title: "Logboek_NicoleB"
+output: html_document
+---
+
+## Logboek samenvatting
+
+In dit logboek.... to be continued 
+
+
+
+#### 20-04-2026
+Als start heb ik met mijn groepje overlegd wat onze waarden zijn. Op basis daarvan heb ik deze samenwerkingsovereenkomst gemaakt:
+
+* Elke les aanwezig tenzij anders overlegd.
+* Afmelden bij ziekte en niet-tijdige aanwezigheid.
+* Wekelijkse overleg wat er is gedaan en wat we gaan doen.
+* Contact via Teams en WhatsApp.
+* Deadlines worden vooraf afgesproken en nageleefd. Afspraak is afspraak.
+* Taken worden eerlijk verdeeld en niet andermans taken doen zonder overleg.
+* Als iemand deze overeenkomsten niet naleeft, behouden anderen het recht om naar de docent te stappen.
+
+
+#### 21-04-2026
+
+Dit is de link naar het wetenschappelijk artikel die wij gaan "nabootsen"
+https://www.sciencedirect.com/science/article/pii/S2589004225016438?via%3Dihub
+
+
+Ze onderzoeken hoe bruine vetcellen reageren wanneer ze worden gestimuleerd om vet af te breken en warmte te produceren. 
+Dit proces heet thermogene lipolyse en wordt in het experiment opgewekt door de cellen bloot te stellen aan norepinefrine. 
+Tijdens dit experiment wordt op meerdere tijdstippen gemeten (0h, 4h, 24h).
+
+Data staat nu op assemblix in het mapje Thema08\lipolyse
+
+Github: https://github.com/Nikkieeex/Multi-omics_lypolysis_brown_adipocytes
+
+
+#### 22-04-2026
+
+Onze docent Tsjerk Wassenaar heeft vandaag uitleg gegeven over preproccesing. Ik heb daar wat notities over gemaakt en een stappenplan.
+
+Stappen moeten chronologisch:
+ 
+1.  Artikel lezen (iedereen voorzich) 
+Multi-omics analysis of thermogenic lipolysis in brown adipocytes
+ 
+2. Vectorize data (Joris)
+Joris heeft alle data gedownload en we kijken naar welke bestanden nuttig zijn voor ons. Er zitten ook nog .raw data tussen en alle drie omics mogen nog gemapped worden tegen referentie genoom. 
+ 
+Wanneer deze eerste stap is afgerond gaat Joris een word document opstellen voor ons artikel. 
+Tip van Tsjerk is kijk niet naar opmaakt en hou het simpel, vanwege het herformatteren van artikel later. Hoofdvraag artikel: focus op de methode in het artikel en niet hoofdvraag op biologie zetten
+ 
+3. Ieder een omics (Gea, Janine, Nicole)
+Transcriptomics: Gea
+Metabolomics: Janine
+Proteomics: Nicole
+ 
+Hier duid Tsjerk om 3 veranderingen. 
+Log transform, Goed kijken naar hoe de verdeling is. Kijk naar outliers en scheefheid
+Normalize observations, Kijk naar samples dus horizontale rijen en normalize deze
+Normalize features, Kijk naar features dus kolommen en normalize 
+Er zijn 32 samples dus er moeten 32 features komen. Uitleg over features begin mei dus eerst naar eerste stappen kijken.
+ 
+Uiteindelijke resultaat is een numpy.array. 
+Wanneer je klaar bent met jouw deel voordat andere dat zijn kun je het volgende doen. Kijk naar de hoofdvraag van het referentie artikel. Wat is er wel en niet onderzocht en hoe kunnen wij onze eigen draai geven. 
+
+Notes: 
+Tsjerk heeft een library over regressie van tijd en het patroon in de data. Want we hebben verschillende tijdspunten (library heet chello). Dit kunnen we mogelijk later gebruiken na preprocessing stap. 
+ 
+Logboek inhoud: wat je doet. hoe (methode) en wat er uitkomt
+
+
+#### 04-05-2026
+
+Ik kwam op google scolar een mooi artikel tegen die mij een beter beeld gaf van protomics. https://www.mdpi.com/2073-4425/15/12/1551
+
+Proteomics is namelijk een belangrijke aanvulling op transcriptomics, omdat eiwitexpressie niet altijd direct overeenkomt met genexpressie.
+
+Ik heb ook een intressante tool gevonden genaamd MINIE. Het staat voor Multi-omic network inference from time-series data.
+Het is een machine learning tool die ik later wel zou willen uittesten. Ik heb hem gevonden in een artikel op pubmed https://pmc.ncbi.nlm.nih.gov/articles/PMC12521560/
+
+Leg meer uit Nicole
+
+
+#### 07-05-2026
+
+Ik heb 2 wetenschappelijke artikelen gelezen die lijken op ons project en daar heb ik veel van opgestoken. https://pubmed.ncbi.nlm.nih.gov/41827860/
+Een van deze was een review paper en heb ik veel opgestoken over bruine vetcellen. 
+De belangrijkste conclusie uit deze studies is dat bruine vetcellen (BAT) veel complexer en belangrijker zijn dan vroeger gedacht. 
+Ze zijn niet alleen “warmteproducerende vetcellen”, maar actieve metabole regelcentra. Er werden ook onderzoeken benoemd waar
+ze signaal eiwitten voor mogelijk endocriene verbanden en zelf darmmicrobiota verbanden zijn gevonden. We moeten wel voorzichtig conclusies trekken,
+omdat de meeste onderzoeken alleen nog op muizen zijn gedaan. 
+
+
+#### 08-05-2026
+
+Voordat we de data kunnen analyseren moeten we kijken naar de data. De dataset bestaat uit meerdere 
+MaxQuant-outputbestanden afkomstig van een LC-MS/MS proteomicsanalyse. De map bevat informatie op verschillende niveaus, 
+waaronder 20.015 eiwitgroepen in proteinGroups.txt, 49.782 peptiden in peptides.txt, 349.521 peptide-identificaties in evidence.txt 
+en 2.013.893 MS/MS-identificaties in msms.txt. Daarnaast bevat allPeptides.txt 1.096.681 peptidefeatures en msmsScans.txt ongeveer 
+504.840 MS/MS-scans.
+Ook zijn bestanden aanwezig voor kwaliteitscontrole (summary.txt) en post-translationele modificaties, zoals methionine-oxidatie 
+(Oxidation (M)Sites.txt, 1.477 entries). Volgens de beschrijving in tables.pdf bevat proteinGroups.txt onder andere LFQ-intensiteiten,
+peptide-aantallen en sequence coverage per eiwitgroep, waardoor dit bestand waarschijnlijk centraal zal staan in de verdere analyse 
+van de proteomicsdata.
+
+Ik heb een file aangemaakt genaamd Exploratory_Data_Analysis_proteomics.Rmd hier zet ik statestiek en visualisaties in om een
+beter begrip te krijgen van de data. 
+Ik laad proteinGroups.txt in omdat hier samengevat in staat wat wij willen weten.( eiwitdata en LFQ-intensiteiten)
+
+
+
+## Exploratory Data Analysis
+
+Wat moet in mijn EDA: (voor mijzelf)
+Is mijn data bruikbaar?
+Zijn samples vergelijkbaar?
+Zijn er outliers/batch effects?
+Hoe zijn de intensiteiten verdeeld?
+Hoeveel missing values heb ik?
+Heb ik log-transformatie of extra normalisatie nodig?
+
+
+Eerst data inladen die we willen beoordelen als het ware. 
+
+```{r}
+library(tidyverse)
+library(pheatmap)
+library(ggplot2)
+# librarys alvast inladen voor later, doe ik graag in eerste code blok
+
+
+file.exists("/students/2025-2026/Thema08/lipolyse/unpacked/proteomics//proteinGroups.txt") # Als er True staat bestaat het pad
+data <- read.delim("/students/2025-2026/Thema08/lipolyse/unpacked/proteomics//proteinGroups.txt") 
+head(data)
+```
+Er komt bij mij True uit, dus we kunnen door! Ik ga nu kijken hoe de data in elkaar steekt.
+
+
+
+```{r}
+dim(data)
+```
+
+
+```{r}
+colnames(data)
+
+```
+Je ziet dat de data set 18 samples bevat van 6 replicaten op 0h, 6 replicaten op 4h en 6 replicaten op 24h
+
+We gaan nu verder kijken naar LFQ.intensity. LFQ.intensity zijn de Label-Free Quantification waarden. Deze beschrijven de relatieve hoeveelheid van een eiwit in een sample.
+
+Het bestand proteinGroups.txt is een samenvatting van de eiwitidentificaties uit MaxQuant (MaxQuant is a quantitative proteomics software package designed for analyzing large mass-spectrometric data sets). Elke rij stelt een eiwitgroep voor en de kolommen bevatten eigenschappen en metingen van deze eiwitgroep.
+
+In Sequence.coverage staan de percentage van de aminozuursequentie dat gevonden is.
+
+
+
+
+```{r}
+lfq <- data[, grep("LFQ.intensity", colnames(data))]
+head(lfq)
+```
+Ik zie nullen dus we gaan dit even verder uitzoeken
+
+```{r}
+dim(lfq)
+```
+```{r}
+summary(lfq)
+```
+```{r}
+missing_per_protein <- rowSums(is.na(lfq))
+
+hist(missing_per_protein,
+     breaks = 18,
+     main = "Missing Values Per Protein",
+     xlab = "Aantal missende samples")
+```
+Er is een grote groep die nullen bevat.
+Veel eiwitten missen in meerdere samples doordat laag-abundante eiwitten niet altijd door de massaspectrometer worden gedetecteerd, waardoor eiwitten met extreem veel missende waarden later waarschijnlijk uit de analyse gefilterd zullen worden. 
+Ik ga dit voor nu niet aanpassen. Dit is namelijk per tool die we later gaan gebruiken verschillend hoe ik dit moet aanpakken. 
+
+
+
+##### Log
+
+```{r}
+hist(as.matrix(lfq),
+     breaks = 100,
+     main = "Raw LFQ Intensities",
+     xlab = "Raw intensity")
+```
+De ruwe LFQ-intensiteiten zijn sterk rechts-scheef verdeeld, waarbij een klein aantal eiwitten extreem hoge abundanties heeft. 
+
+
+```{r}
+lfq[lfq == 0] <- NA
+
+lfq_log <- log2(lfq)
+```
+
+log2-transformatie toegepast om de verdeling compacter en beter vergelijkbaar te maken voor verdere statistische analyse.
+
+```{r}
+hist(as.matrix(log2(lfq)),
+     breaks = 100,
+     main = "Distribution of LFQ intensities",
+     xlab = "Log2 intensity")
+```
+Dit is een stuk beter
+
+
+
+#### 09-05-2026
+
+Op basis van ons gesprek met Marcel heb ik besloten om wat onderzoek te doen over de volgende stappen. 
+Ik denk dat vooral dimensiereductie, DESeq2 en PLS goed passen bij ons onderzoek. Met dimensiereductie, zoals PCA, kunnen we eerst bekijken of de verschillende tijdspunten of condities van elkaar verschillen en of er outliers aanwezig zijn in de data. Dit geeft een eerste overzicht van de grootste patronen binnen de datasets.
+
+Daarnaast lijkt DESeq2 mij geschikt voor de transcriptomicsdata, omdat deze methode speciaal ontwikkeld is voor RNA-seq countdata. Hiermee kunnen we onderzoeken welke genen significant verschillen tussen bijvoorbeeld 0, 4 en 24 uur.
+
+Ook lijkt PLS of DIABLO erg nuttig voor ons onderzoek, omdat deze technieken meerdere omicslagen tegelijk kunnen integreren. Hierdoor kunnen verbanden tussen bijvoorbeeld transcriptomics, proteomics en metabolomics worden onderzocht. In het artikel wordt DIABLO (samen met MOFA) ook gebruikt voor de multi-omics analyse. 
+
+Wel denk ik dat we voorzichtig moeten zijn met heel complexe AI/ML methoden, omdat de datasets vaak relatief weinig samples bevatten. Hierdoor bestaat het risico op overfitting, wat ook in het artikel wordt benoemd. https://pubmed.ncbi.nlm.nih.gov/30657866/ 
+
+
+#### 11-05-2016
+
+```{r}
+missing_per_sample <- colSums(is.na(lfq))
+
+barplot(missing_per_sample,
+        las = 2,
+        main = "Missing Values Per Sample",
+        ylab = "Aantal missende waarden")
+```
+De missing values per sample is wel gelijk dus daar gaan we verder niet op in.
+
+
+
+```{r}
+boxplot(lfq_log,
+        las = 2,
+        main = "Log2 LFQ Intensities Per Sample",
+        ylab = "Log2 intensity")
+```
+Er zijn hier ook geen samples die afwijken dus we gaan door 
+
+
+Deze grafiek doet het niet meer??? Ik kijk hier later naar
+
+top_proteins <- data %>%
+  select(Gene.names, starts_with("LFQ.intensity")) %>%
+  mutate(mean_intensity = rowMeans(select(., starts_with("LFQ.intensity")),
+                                   na.rm = TRUE)) %>%
+  arrange(desc(mean_intensity))
+
+head(top_proteins[, c("Gene.names", "mean_intensity")], 20)
+
+
+
+
+
+```{r}
+data$mean_0h <- rowMeans(data[, grep("LFQ.intensity.0h", colnames(data))],
+                         na.rm = TRUE)
+
+data$mean_24h <- rowMeans(data[, grep("LFQ.intensity.24h", colnames(data))],
+                          na.rm = TRUE)
+
+data$log2_fc <- log2((data$mean_24h + 1) / (data$mean_0h + 1))
+
+top_changed <- data %>%
+  arrange(desc(abs(log2_fc)))
+
+head(top_changed[, c("Gene.names", "log2_fc")], 20)
+```
+
+
+
+#### 13-05-2026
+
+```{r}
+boxplot(lfq,
+        las = 2,
+        main = "Raw LFQ Intensities Per Sample",
+        ylab = "Raw intensity")
+```
+
+```{r}
+sample_sums <- colSums(lfq, na.rm = TRUE)
+
+barplot(sample_sums,
+        las = 2,
+        main = "Total LFQ intensity per sample",
+        ylab = "Total intensity")
+```
+De ruwe LFQ-intensiteiten verschillen sterk in schaal en bevatten extreme waarden. Hierdoor zijn de distributies moeilijk onderling te vergelijken. 
+
+Ik ga eerst kijken naar al mogelijken patronen die te zien zijn in de data en dan kijken wat ik voor LFQ intensiteit kan betekenen als er geen patronen zijn. 
+
+
+
+#### 14-05-2026
+
+Vandaag plotjes dag
+
+```{r}
+cor_matrix <- cor(lfq_log,
+                  use = "pairwise.complete.obs")
+
+pheatmap(cor_matrix,
+         main = "Sample Correlation Heatmap")
+```
+De correlaties tussen samples zijn over het algemeen hoog (ongeveer 0.96–1.00). Daarnaast clusteren replicaten van dezelfde tijdspunten grotendeels samen. Er lijken geen extreme outliers of sterk afwijkende samples aanwezig te zijn. Dit suggereert dat de data technisch redelijk consistent is tussen samples.
+
+In de volgende analyse gebruiken we een feature × feature correlatiematrix die Tsjerk ons aanraad.
+Hiermee onderzoeken we welke eiwitten gezamenlijk variëren tussen de verschillende tijdspunten.
+
+
+##### PCA tsjerk methode
+
+PCA (Principal Component Analysis) voeren we uit om grote en complexe datasets overzichtelijker te maken. We kijken namelijk naar veel voorkomende patronen https://en.wikipedia.org/wiki/Principal_component_analysis 
+
+```{r}
+lfq_clean <- lfq
+lfq_clean[lfq_clean == 0] <- NA
+lfq_log <- log2(lfq_clean)
+
+lfq_log <- lfq_log[rowSums(is.na(lfq_log)) == 0, ]
+
+P <- t(as.matrix(lfq_log))
+
+P <- P[, apply(P, 2, sd) > 0]
+
+vars <- apply(P, 2, var)
+top_n <- min(500, ncol(P))
+
+P <- P[, order(vars, decreasing = TRUE)[1:top_n]]
+
+P <- scale(P)
+
+svd_result <- svd(P)
+
+loadings <- svd_result$v
+scores <- P %*% loadings
+vals <- svd_result$d^2
+```
+Omdat de feature × feature matrix theoretisch symmetrisch hoort te zijn, maar kleine afrondingsfouten tijdens berekeningen numerieke instabiliteit kunnen veroorzaken, is de matrix expliciet symmetrisch gemaakt voordat de eigenwaarden werden berekend. 
+
+Met de eigenwaarden kan bekeken worden hoeveel variantie iedere principal component verklaart.
+
+
+```{r}
+groups <- c(rep("0h", 6), rep("4h", 6), rep("24h", 6))
+
+plot(scores[,1],
+     scores[,2],
+     col = as.factor(groups),
+     pch = 19,
+     xlab = "PC1",
+     ylab = "PC2",
+     main = "Feature x feature PCA")
+
+legend("topright",
+       legend=levels(as.factor(groups)),
+       col=1:3,
+       pch=19)
+```
+Ik ben zeer tevreden met deze PCA1 vs PCA2!
+
+De eerste principal components verklaren een groot deel van de variantie in de dataset. In de PCA-scoreplot is te zien dat de samples grotendeels clusteren per tijdspunt. Dit suggereert dat de eiwitprofielen veranderen tijdens thermogene lipolyse en dat de verschillende tijdspunten biologisch van elkaar verschillen.
+
+Omdat de dataset veel meer features dan samples bevat, is voor de PCA eerst geselecteerd op de eiwitten met de hoogste variantie. Daarnaast is SVD gebruikt als numeriek stabielere methode voor dimensiereductie.
+
+
+We maken nu een plot die laat zien hoeveel principal components relevant zijn om verder te analyseren.
+
+```{r}
+plot(vals / sum(vals),
+     type = "b",
+     main = "Scree plot",
+     xlab = "Principal component",
+     ylab = "Explained variance")
+```
+De scree plot laat zien hoeveel variantie iedere principal component (PC) verklaart binnen de dataset. In deze analyse is duidelijk zichtbaar dat PC1 en PC2 het grootste deel van de variantie verklaren. PC1 verklaart ongeveer 40% van de variantie en PC2 iets minder dan 30%. Daarna daalt de hoeveelheid verklaarde variantie sterk.
+
+Vanaf ongeveer PC3 wordt de lijn veel vlakker.
+
+Op basis van deze scree plot kan geconcludeerd worden dat de dataset grotendeels wordt verklaard door een klein aantal principal components. Daarom zijn vooral PC1 en PC2 relevant voor verdere visualisatie en interpretatie van de proteomics- of transcriptomicsdata. Dit ondersteunt het gebruik van PCA om biologische verschillen tussen de samples inzichtelijk te maken.
+
+
+
+#### 16-05-2026
+
+Zoals in de scree plot hiervoor te zien was is PCA3 maar iets minder dan 10%. Ik ga kijken of er nogsteeds clusters ontstaan ondanks. 
+```{r}
+plot(scores[,1],
+     scores[,3],
+     col=as.factor(groups),
+     pch=19,
+     xlab="PC1",
+     ylab="PC3",
+     main="PC1 vs PC3")
+```
+Ik weet niet zo goed hoe ik dit moet interpreteren. 
+
+Voor meer overzicht PCA loop!
+```{r}
+pairs(scores[,1:4],
+      col=as.factor(groups),
+      pch=19)
+```
+Ik ben trouwens de legenda vergeten maar heeft zelfde betekenis als PCA1 VS PCA2
+
+Je ziet hier dat er wel clusters ontstaan tussen PCA2 en andere PCA. Dit is wel intressant
+
+
+
+#### 17-05-2026
+
+Nog even wat plots maken die PCA ondersteunen
+
+
+
+```{r}
+barplot(explained,
+        xlab="Principal component",
+        ylab="Explained variance",
+        main="Scree plot")
+```
+Zelfde als eerste scree plot maar dan histrogram. Ik twijfel nog welke duidelijker is voor midterm presentatie
+
+
+#### 19-05-2026
+
+Nog even opschrijven wat ik had gevonden later tabladen staan nog open
+
+
+#### 22-05-2026
+
+Ik heb na de midterm reviw presentatie naar wat opties gekeken waar ons project naartoe kan gaan en ik kwam bij MOFA+
+
+https://pmc.ncbi.nlm.nih.gov/articles/PMC7212577/ 
+
+Leg meer uit
+
+
+#### 24-05-2026
+
+Vandaag heb ik gewerkt aan het geschikt maken van de proteomicsdataset voor integratie met MOFA+. In de literatuur wordt benadrukt dat een belangrijke beperking van MOFA+ is dat het model zorgvuldige preprocessing vereist. Dit komt doordat MOFA+ probeert onderliggende biologische signalen te extraheren uit complexe datasets, terwijl ruwe omics-data vaak verstoord wordt door technische en statistische factoren.
+Voorbeelden van zulke verstoringen zijn:
+
+technische ruis
+batch effects
+verschillende distributies tussen datasets
+extreme waarden
+missing values
+
+Omdat MOFA+ gevoelig kan zijn voor deze factoren, is het belangrijk om kritisch te evalueren welke preprocessing-stappen noodzakelijk zijn voor mijn dataset.
+
+
+Een van de eerste keuzes die gemaakt moest worden, is hoe om te gaan met missing values. In proteomicsdata komen missende waarden vaak voor door detectielimieten van de massaspectrometer, en in veel gevallen moeten deze gefilterd of geïmputeerd worden.
+Mijn eerste aanname was daarom dat filtering van eiwitten met veel missende waarden noodzakelijk zou zijn voordat de data gebruikt kan worden in MOFA+.
+Om dit te controleren heb ik het aantal missende waarden per eiwit berekend:
+
+```{r}
+
+table(rowSums(is.na(lfq_log)))
+
+```
+
+De uitkomst van deze analyse laat zien dat alle eiwitten 0 missende waarden bevatten. Dit betekent dat er in de huidige bewerkte dataset geen ontbrekende waarden meer aanwezig zijn.
+
+Dit resultaat was enigszins onverwacht, omdat proteomicsdata doorgaans juist bekend staat om het bevatten van veel missende waarden. Dit suggereert dat in een eerdere preprocessing stap (bijvoorbeeld filtering of transformaties) de missing values mogelijk al zijn verwijderd of impliciet zijn behandeld.
+Op basis hiervan concludeer ik dat:
+
+verdere filtering op basis van missing values niet nodig is
+imputatie van missende waarden in dit geval niet van toepassing is
+de dataset al relatief “clean” is met betrekking tot missingness
+
+Dit is gunstig voor de verdere analyse, omdat het betekent dat de data stabieler en eenvoudiger te gebruiken is voor MOFA+, zonder dat extra aannames (zoals imputatie) geïntroduceerd hoeven te worden.
+
+
+#### 25-05-2026
+
+Ik ga nu kijken naar de scaling 
+
+In de literatuur wordt vaak aangeraden om data te schalen, omdat verschillen in schaal tussen features het model kunnen beïnvloeden. Toch is het belangrijk vind ik om eerst te evalueren of deze stap in mijn specifieke dataset daadwerkelijk nodig is.
+
+
+Om dit te onderzoeken heb ik de data vóór en na scaling met elkaar vergeleken. De scaling is uitgevoerd met z-score normalisatie per eiwit:
+
+```{r}
+lfq_scaled <- t(scale(t(lfq_log)))
+
+```
+
+
+
+Nu kijken met boxplot of er ook echt verschillen zijn
+```{r}
+par(mfrow = c(1, 2))
+
+# VOOR scaling
+boxplot(lfq_log,
+        las = 2,
+        main = "Before scaling",
+        ylab = "Log2 intensity")
+
+# NA scaling
+boxplot(lfq_scaled,
+        las = 2,
+        main = "After scaling",
+        ylab = "Z-score")
+
+par(mfrow = c(1,1))
+```
+In de linker plot (“Before scaling”) is te zien dat de ruwe log2-intensiteiten per sample niet volledig overlappen. Hoewel de medianen relatief dichtbij elkaar liggen, is er variatie in spreiding en bereik tussen de samples.
+In de rechter plot (“After scaling”) is zichtbaar dat:
+
+de medianen rond 0 liggen
+de spreiding tussen samples veel consistenter is
+de distributies beter vergelijkbaar zijn
+
+Daarnaast is duidelijk dat de schaal volledig is veranderd van absolute intensiteiten (log2) naar relatieve waarden (z-scores).
+
+De vergelijking tussen de twee plots laat zien dat scaling een duidelijk effect heeft op de data.
+Hoewel de verschillen tussen samples vóór scaling niet extreem groot zijn, is er wel sprake van variatie in spreiding en schaal. Na scaling zijn deze verschillen sterk verminderd, waardoor alle samples op een vergelijkbare schaal liggen.
+Dit is belangrijk voor MOFA+, omdat het model anders beïnvloed kan worden door eiwitten met grotere variatie of hogere absolute waarden.
+
+
+## Feature selectie
+
+Na het schalen van de data heb ik de volgende stap uitgevoerd: het selecteren van de meest informatieve eiwitten voor gebruik in MOFA+. Omdat de dataset veel meer eiwitten dan samples bevat, is het belangrijk om ruis te verminderen en de analyse te focussen op de belangrijkste variatie.
+
+```{r}
+vars <- apply(lfq_scaled, 1, var)
+
+summary(vars)
+
+```
+
+Omdat de data vooraf is geschaald met z-score normalisatie, is de variantie per eiwit gelijk gemaakt. Hierdoor is variantie geen geschikte maat meer om informatieve eiwitten te selecteren. In plaats daarvan is gebruik gemaakt van de PCA-analyse, die laat zien dat de dataset al duidelijke biologische structuur bevat en geen verdere filtering vereist.
+
+
+#### 26-05-2026
+
+Na het uitvoeren van log-transformatie, controle op missing values en scaling, heb ik een uiteindelijke data matrix verkregen:
+
+```{r}
+dim(lfq_scaled)
+```
+
+Matrix een naampje geven
+```{r}
+proteomics_matrix <- lfq_scaled
+```
+
+Ik ga nu noteren wat ik heb gedaan in onze paper
+```{r}
+head(proteomics_matrix)
+```
+
+To do:
+z scores benoemen nog
+
+haal nullen weg
+
+
+#### 28-05-2026
+
+matrix rows aanpassen zodat ze matchen met transcriptomics matrix. 
+```{r}
+file.exists("/students/2025-2026/Thema08/lipolyse/unpacked/proteomics//proteinGroups.txt") # Als er True staat bestaat het pad
+data <- read.delim("/students/2025-2026/Thema08/lipolyse/unpacked/proteomics//proteinGroups.txt") 
+
+colnames(data)
+```
+
+```{r}
+head(data$Gene.names)
+```
+Okay ik heb hier eindelijk de IDs gevonden en nu gaan we ze matching maken met transcriptomics IDs. Ook zetten we ze meteen in de proteomics matrix waar nu getallen staan bij de rows. De rows zijn ook niet 1,2,3 want er zijn rows verwijderd.
+
+Voor duidelijkheid ik heb vanaf begin LFQ files gebruikt waar geen IDs in stonden. 
+
+```{r}
+library(dplyr)
+library(biomaRt)
+
+data <- as.data.frame(data)
+proteomics_matrix <- as.data.frame(proteomics_matrix)
+
+# Extract LFQ data FIRST (before anything breaks column names)
+lfq_matrix <- data %>%
+  dplyr::select(starts_with("LFQ.intensity"))
+
+# Add RowID
+data$RowID <- seq_len(nrow(data))
+
+# Extract gene info
+gene_info <- data %>%
+  dplyr::select(RowID, Gene.names)
+
+gene_info$GeneSymbol <- sapply(
+  strsplit(as.character(gene_info$Gene.names), ";"),
+  `[`,
+  1
+)
+
+# Ensembl connection
+mart <- useEnsembl(
+  biomart = "genes",
+  dataset = "mmusculus_gene_ensembl",
+  version = 108
+)
+
+mapping <- getBM(
+  attributes = c("external_gene_name", "ensembl_gene_id"),
+  filters = "external_gene_name",
+  values = unique(gene_info$GeneSymbol),
+  mart = mart
+)
+
+mapping <- mapping %>%
+  dplyr::distinct(external_gene_name, .keep_all = TRUE)
+
+gene_info <- dplyr::left_join(
+  gene_info,
+  mapping,
+  by = c("GeneSymbol" = "external_gene_name")
+)
+
+# Add RowID to LFQ matrix
+lfq_matrix$RowID <- seq_len(nrow(lfq_matrix))
+
+# Merge IDs into LFQ data
+proteomics_matrix <- dplyr::left_join(
+  lfq_matrix,
+  gene_info[, c("RowID", "ensembl_gene_id")],
+  by = "RowID"
+)
+
+# Clean
+proteomics_matrix <- proteomics_matrix %>%
+  dplyr::filter(!is.na(ensembl_gene_id))
+
+proteomics_matrix <- proteomics_matrix[
+  !duplicated(proteomics_matrix$ensembl_gene_id),
+]
+
+# Set rownames
+rownames(proteomics_matrix) <- proteomics_matrix$ensembl_gene_id
+
+# Remove helper columns
+proteomics_matrix <- proteomics_matrix %>%
+  dplyr::select(-RowID, -ensembl_gene_id)
+
+# Final check
+dim(proteomics_matrix)
+head(proteomics_matrix)
+head(rownames(proteomics_matrix))
+
+```
+ensemble lag eruit en het lukte mij niet om het zelf te fixen, want ook asia en eu servers lagen eruit. Dus nu heb ik stomme ai chaotische code. Het heeft gewerkt maar ik vertrouw er niks van en ik gooi het wrs weg later. We gebruiken dit nu even omdat we snel moeten testen of ML tool op deze wijze kan werken. 
+
+
+Er staan voor mijn gevoel meer nullen in dan eerst. En ook even wat kwaliteits checks doen want ik wantrouw behoorlijk.
+
+```{r}
+# NA (missing values) check
+cat("Aantal NA vóór filtering:\n")
+sum(is.na(lfq_matrix))
+
+cat("Aantal NA na filtering:\n")
+sum(is.na(proteomics_matrix))
+
+# Percentage NA
+cat("Percentage NA vóór:\n")
+mean(is.na(lfq_matrix))
+
+cat("Percentage NA na:\n")
+mean(is.na(proteomics_matrix))
+
+# Aantal zeros check
+cat("Aantal 0 vóór:\n")
+sum(lfq_matrix == 0, na.rm = TRUE)
+
+cat("Aantal 0 na:\n")
+sum(proteomics_matrix == 0, na.rm = TRUE)
+
+# Percentage zeros
+cat("Percentage 0 vóór:\n")
+mean(lfq_matrix == 0, na.rm = TRUE)
+
+cat("Percentage 0 na:\n")
+
+```
+
+Eiwitten zonder gene match zijn weggegooid... Er zijn dus minder nullen ahahah. maar ik denk dat ML tool hier niet mee kan werken...
+
+
+
+Let op Joris als je ML gebruikt zorg dat 0 waardes okay zijn want 30% is 0 anders vervangen door kleine waardes. Ik doe het hier even voor je maar ik weet niet of dit goed genoeg is. 
+
+```{r}
+proteomics_matrix_imp <- proteomics_matrix
+proteomics_matrix_imp[proteomics_matrix_imp == 0] <- NA
+
+# vervang NA met kleine waarde
+min_val <- min(proteomics_matrix_imp, na.rm = TRUE)
+
+proteomics_matrix_imp[is.na(proteomics_matrix_imp)] <- min_val * 0.5
+head(proteomics_matrix_imp, 50)
+```
+Lage getallen inplaats van nullen
+
+
+Okay de matrix is nu identiek met de transcriptomics matrix dus we kunnen nu op deze wijze een vergelijking doen.
+
+
+
+#### 29-05-2026
+
+Ik heb weer een PVA gemaakt over de laatste stappen van ons project. Deze is te vinden in onze Microsofts Teams kanaal. Dit is wat ik ga doen aankomende dagen:
+
+* Maak DAP-lijsten (differentially abundant proteins) voor de 3 vergelijkingen (0h vs 4h, ect.).
+* Exporteer de lijsten met: gen ID / gene symbol + log2FC + p-value + padj.
+* Maak een overlap-lijst met de DEG-lijsten van Joris (welke genen komen in beide voor).
+
+
+#### 30-05-2026
+
+MetaScape kan geen nans hebben, maar die zijn er vanaf begin al uit en werkt met ensemble IDs
+
+```{r}
+library(limma)
+library(tidyverse)
+
+dim(proteomics_matrix)
+head(rownames(proteomics_matrix))
+```
+De row names zijn ensemble ID dus top
+
+
+We gaan Limma gebruiken. Limma spoort statistisch significante verschillen op in genexpressie tussen verschillende biologische groepen. Bij ons dus de tijdsgroepen.
+
+Door het Empirical Bayes-algoritme deelt Limma variantie-informatie over alle eiwitten heen. Dit voorkomt fouten (valse positieven) wanneer je slechts 3 of 4 herhalingen (replicates) per groep hebt
+
+
+```{r}
+
+prot_clean <- proteomics_matrix_imp
+prot_clean[prot_clean == 0] <- NA
+prot_log <- log2(as.matrix(prot_clean))
+min_log_val <- min(prot_log, na.rm = TRUE)
+prot_log[is.na(prot_log)] <- min_log_val - 1
+
+cat("Waardenbereik prot_log:", range(prot_log, na.rm = TRUE))
+
+```
+
+Voordat ik limma uitvoerde wilde ik eerst controleren of de matrix die ik aanmaak wel de juiste waarden bevat. Dit doe ik omdat ik eerder problemen had met de preprocessing stappen waarbij nullen werden vervangen door kleine waarden voordat de log2 transformatie was uitgevoerd. Hierdoor kwamen er extreme log2FC waarden uit (tot 1.5e+10) die duidelijk niet klopten.
+
+```{r}
+
+group <- factor(c(rep("h0",6), rep("h24",6), rep("h4",6)), levels = c("h0", "h4", "h24")) # kolommen stonden eerst in de war hehehe dit was de nodige fix
+design <- model.matrix(~0 + group)
+colnames(design) <- levels(group)
+
+contr.matrix <- makeContrasts(
+  h4_vs_h0  = h4  - h0,
+  h24_vs_h0 = h24 - h0,
+  h24_vs_h4 = h24 - h4,
+  levels = design
+)
+
+fit  <- lmFit(prot_log, design)
+fit2 <- contrasts.fit(fit, contr.matrix)
+fit2 <- eBayes(fit2, trend = TRUE)
+
+# Step 4: Check FC distribution looks reasonable
+dap_4vs0 <- topTable(fit2, coef = "h4_vs_h0", number = Inf, adjust.method = "BH")
+hist(dap_4vs0$logFC, breaks = 100, main = "Distribution of log2FC (4h vs 0h)")
+# Expect values roughly between -5 and +5
+```
+```{r}
+cat("Value range:", range(prot_log, na.rm = TRUE), "\n")
+cat("Expected: roughly 10 to 40 for LFQ log2 intensities\n")
+cat("Dimensions:", dim(prot_log), "\n")  # Should be ~proteins x 18 samples
+```
+Dit ziet er goed uit geen gekke e nummers
+
+
+```{r}
+dap_4vs0$ensembl_gene_id  <- rownames(dap_4vs0)
+dap_24vs0$ensembl_gene_id <- rownames(dap_24vs0)
+dap_24vs4$ensembl_gene_id <- rownames(dap_24vs4)
+
+dap_4vs0  <- dap_4vs0[,  c("ensembl_gene_id", "logFC", "P.Value", "adj.P.Val")]
+dap_24vs0 <- dap_24vs0[, c("ensembl_gene_id", "logFC", "P.Value", "adj.P.Val")]
+dap_24vs4 <- dap_24vs4[, c("ensembl_gene_id", "logFC", "P.Value", "adj.P.Val")]
+
+all_daps <- rbind(
+  cbind(dap_4vs0,  comparison = "4h_vs_0h"),
+  cbind(dap_24vs0, comparison = "24h_vs_0h"),
+  cbind(dap_24vs4, comparison = "24h_vs_4h")
+)
+
+sig_daps <- all_daps[all_daps$adj.P.Val < 0.05 & abs(all_daps$logFC) > 1, ]
+print(paste("Significante DAPs:", nrow(sig_daps)))
+
+write.csv(dap_4vs0,  "DAP_4h_vs_0h.csv",  row.names = FALSE)
+write.csv(dap_24vs0, "DAP_24h_vs_0h.csv", row.names = FALSE)
+write.csv(dap_24vs4, "DAP_24h_vs_4h.csv", row.names = FALSE)
+write.csv(all_daps,  "All_DAPs_combined.csv", row.names = FALSE)
+```
+DAPs!
+
+
+
+```{r}
+summary(dap_4vs0$logFC)
+```
+
+mediaan is 0??? zoek dit nog uit
+
+
+
+
+```{r}
+sig_daps[order(abs(sig_daps$logFC), decreasing = TRUE), ]
+```
+
+```{r}
+library(biomaRt)
+mart <- useEnsembl(biomart = "genes", dataset = "mmusculus_gene_ensembl", version = 108)
+
+id_mapping <- getBM(
+  attributes = c("ensembl_gene_id", "external_gene_name"),
+  filters = "ensembl_gene_id",
+  values = sig_daps$ensembl_gene_id,
+  mart = mart
+)
+
+sig_daps_named <- merge(sig_daps, id_mapping, by = "ensembl_gene_id", all.x = TRUE)
+sig_daps_named[order(abs(sig_daps_named$logFC), decreasing = TRUE), ]
+```
+
+Hier wat gene names 
+
+
+
+
+
+
+
+
+
+

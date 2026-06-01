@@ -1,0 +1,501 @@
+---
+title: "Logboek_Janine"
+author: "Janine Postmus"
+date: "2026-05-08"
+output: html_document
+---
+
+Logboek van Janine Postmus  
+Aangemaakt op 04-05-2026  
+Project voor Omics, periode 8, studie bio-informatica  
+Projectgroep: Janine Postmus, Gea Bakker, Joris Deelstra, Nicole Bovenga  
+
+
+### Project 
+
+https://www.sciencedirect.com/science/article/pii/S2589004225016438?via%3Dihub  
+
+Github  
+
+https://github.com/Nikkieeex/Multi-omics_lypolysis_brown_adipocytes   
+
+ 
+
+#### Taakverdeling 
+
+Stappen moeten chronologisch:  
+
+1.  Artikel lezen: Multi-omics analysis of thermogenic lipolysis in brown adipocytes   
+2. Vectorize data (Joris)  
+Joris heeft alle data gedownload en we kijken naar welke bestanden nuttig zijn voor ons. Er zitten ook nog .raw data tussen en alle drie omics mogen nog gemapped worden tegen referentie genoom.   
+Wanneer deze eerste stap is afgerond gaat Joris een word document opstellen voor ons artikel.   
+3. Ieder een omics (Gea, Janine, Nicole)  
+ Transcriptomics: Gea  
+ Metabolomics: Janine  
+ Proteomics: Nicole  
+Hier duidt Tsjerk om 3 veranderingen.   
+Log transform, Goed kijken naar hoe de verdeling is. Kijk naar outliers en scheefheid  
+Normalize observations, Kijk naar samples dus horizontale rijen en normalize deze  
+Normalize features, Kijk naar features dus kolommen en normalize   
+
+
+### Inlezen artikel 04-05-2026 
+
+#### Multi-omics analysis of thermogenic lipolysis in brown adipocytes 
+
+Het artikel onderzoekt wat er gebeurt in bruine vetcellen wanneer thermogene lipolyse wordt opgewekt met norepinephrine, het onderzoek richt zich op het moleculaire deel waarbij 3 omics-lagen behandeld worden namelijk transcriptomics, proteomics en metabolomics. Het doel is naast de biologische kant om ook de methodologische manier te vergelijken. Ze vergelijken de beide manieren om multi-omics-data te integreren.   
+
+In het artikel wordt een tijdlijn gebruikt na een norepinephrine-stimulatie waarbij er duidelijke veranderingen zichtbaar zijn in de multi-omics. Voornamelijk arachidonzuur, downstream metabolieten, carnitines en TCA-cycle-metabolieten lijken belangrijk te zijn bij thermogene lipolyse. Er is een experimenteel ontwerp gemaakt waarbij er gebruik is gemaakt van immortalized murine brown preadipocytes. Deze cellen zijn gedifferentieerd tot bruine adipocyten en vervolgens gestimuleerd met 1 microliter norepinephrine. Er zijn voor alle drie de omics lagen monsters genomen op 0, 4 en 24 uur. Bij metabolomics zijn er extra tijdpunten meegenomen omdat de veranderingen op dit niveau sneller gaan. Hiervoor zijn de tijdpunten 30 minuten, 1, 2 en 8 uur extra toegevoegd. Per omics laag en tijdpunt zijn er 6 replicaten gebruikt.   
+
+Bij de data integratie na de analyse zijn de verschillende omics-lagen eerst apart bekeken voor de resultaten naast elkaar gelegd zijn.  De metabolomics-tijdreeks liet 3 duidelijke metabole toestanden zien. Op 0 uur is de baseline te zien, na 4 uur is er een actieve lipolyse waardoor er een acute metabole shift ontstond en na 24 uur is er sprake van een langdurige stimulatie.   
+
+Bij de proteome resultaten veranderde er visueel niet veel maar tijdens de differentiele analyse en clustering waren er wel functionele veranderingen te zien. Na 4 uur waren vooral eiwitten verhoogd die te maken hadden met mRNA-metabolisme, cellulaire stressrespons, immuunsysteemactiviteit, mitochondriale functies en lipid droplet-dynamiek. Bij 24 h waren vooral eiwitten verhoogd die te maken hadden met TCA-metabolisme, vetzuur-β-oxidatie, aminozuurmetabolisme en ketonlichaammetabolisme.   
+
+Bij de transcriptomics resultaten zijn er meerdere differentially expressed genes (DEG’s) gevonden. Sommige genen daalden over de hele tijdreeks zoals Ero1a, Sema3g, Egln3, Ffar4 en Tlcd3b. Deze zijn gelinkt aan vetmetabolisme, oxidoreductase-activiteit, PPARγ-regulatie, vrije-vetzuurreceptoren en stress/apoptose. Ucp1 was hoger geëxprimeerd na langdurige norepinephrine-stimulatie, passend bij thermogene activatie.   
+
+De vergelijking van de verschillende omics analyse suggereert dat vetzuren vrijkomen, carnitines helpen met het transport richting de mitochondrien, TCA- en energiemetabolisme reorganiseren alles, en de cellen schakelen tussen acute stressrespons en langdurige metabole aanpassing. Hierbij wordt benadrukt dat metabolomics snelle veranderingen laat zien terwijl transcriptomics en proteomics op andere tijdschalen reageren.   
+
+Er zijn nog meerdere data-analyses uitgevoerd om bijvoorbeeld de tijdpunten te scheiden van elkaar (DIABLO uit het R-package mixOmics). Ook is er gebruik gemaakt van MOFA, dit is een unsupervised factoranalyse voor multi-omics. Hierbij is een conservatief model met vie factoren gebruikt waarvan vooral factor 1 en 2 biologisch relevant waren. Hierbij kwamen opnieuw metabolieten naar voren die te maken hebben met cAMP-gerelateerde signaling, carnitines, glucose-6-phosphate, 2-oxovaleric acid, 3-methyl-2-oxopentanoate en vetzuurgebruik. Carnitines hadden verschillende tijdsprofielen, wat suggereert dat specifieke vetzuren anders worden gebruikt in acute versus langdurige lipolyse. Er is vervolgens een pathway analyse toegepast op de DIABLO en MOFA- resultaten en dit liet zien dat geintegreerde methoden beter gecoordineerde biologische responsen vangen dan losse omics-analyses.   
+
+Deze studie laat vooral zien dat thermogene lipolyse een multi-layer proces is. Hierbij laten de verschillende omics-analyses veel detail per laag aan. Geintegreerde methoden tonen gecoordineerde responsen. De auteurs benadrukken wel dat de studie in een immortalized cell line is gedaan waardoor de resultaten niet 1-op-1 naar bruine vetweefsels vertaald mogen worden.    
+
+#### Verdieping project 
+
+Om het project goed te kunnen aanvullen met een mogelijk nieuwe onderzoeksvraag is het belangrijk om te weten wat bepaalde dingen betekenen. Daarom ga ik mij hierin verdiepen.    
+
+#### Adaptieve thermogenese 
+
+Adaptieve thermogenese is een katabool proces waarbij energie-opslagmoleculen worden verbruikt. De energie wordt als warmte afgegeven als reactie op veranderingen in de omgeving. Dit proces vindt vooral plaats in bruin en beige vetweefsel. Thermogenese wordt gereguleerd door veel factoren, waaronder lipide-afgeleide paracriene en endocriene hormonen die lipokines worden genoemd. Thermogenese verwijst naar de productie van warmte om een optimale temperatuur te houden voor enzymatische reacties die essentieel zijn voor het in stand houden van leven. Deze warmteproductie draagt bij aan de energiehomeostase van het hele lichaam door chemische energie uit voedsel te gebruiken om warmte te genereren. Uiteindelijk leidt het thermogene proces tot veranderingen in de concentraties van energie-opslagmoleculen zoals glucose en lipiden, zowel in de circulatie als in de weefsels die deze moleculen opslaan of gebruiken.   
+
+ 
+#### Lipolyse  
+
+
+### EDA Metabolomics
+De verschillende omics lagen hebben we verdeeld onder elkaar zoals te lezen is in de inleiding.
+Ik heb de metabolomics data gesorteerd en gemapt gekregen van Joris. Dit is te vinden in: /students/2025-2026/Thema08/lipolyse/unpacked/metabolomics 
+
+
+#### Inladen data
+In deze R chunk laad ik alle libraries in zodat dit overzichtelijk bij elkaar staat.
+```{r inladen libraries, echo=FALSE, eval=FALSE}
+library(dplyr)
+library(readr)
+library(tidyr)
+library(tidyverse)
+library(ggplot2)
+library(ggrepel)
+library(DESeq2)
+```
+
+Ik ga eerst inventariseren welke bestanden bij elkaar horen omdat er gebruik is gemaakt van meerdere meetmethoden.  
+
+```{r overzicht maken, echo=TRUE, eval=FALSE}
+setwd("/students/2025-2026/Thema08/lipolyse/unpacked/metabolomics/")
+files <- list.files(pattern = "MTBLS12307")
+files
+
+```
+De bestanden zijn opgedeeld in assay, maf en sample files. deze ga ik van elkaar scheiden zodat ze makkelijker te gebruiken zijn.  
+
+```{r filesoorten scheiden, echo=TRUE, echo=FALSE}
+assay_files <- files[grepl("^a_", files)]
+maf_files   <- files[grepl("^m_", files)]
+sample_file <- files[grepl("^s_", files)]
+
+assay_files
+maf_files
+sample_file
+
+```
+Ik heb nu assay, maf en sample files. Het sample file bevat informatie over de samples zelf zoals sample naam, type, treatment etcetera. In de sample files staat de gemeten meatbolomics-data zoals bijvoorbeeld metaboliet-ID, intensiteit per sample en signaalsterkte. De assay bestanden bevatten de getallen waarmee ik de statistische analyses ga uitvoeren. Als laatste hebben we nog de maf files en dit betekent dat het een metabolite annotation file is. Hierin staaat dus informatie over de metabolieten zoals bijvoorbeeld de naam van de metaboliet, ID vanuit een database en chemische formule. 
+
+
+#### Sample file
+
+Ik ga nu het sample file inlezen om te kijken wat er allemaal in mijn data zit.
+```{r inlezen data, echo=TRUE, eval=FALSE}
+setwd("/students/2025-2026/Thema08/lipolyse/unpacked/metabolomics")
+
+sample_metadata <- read_tsv("s_MTBLS12307.txt")
+colnames(sample_metadata)
+```
+Omdat de kolomnamen onnodig lang en onleesbaar zijn ga ik deze aanpassen naar leesbaardere varianten en direct de belangrijkste kolommen eruit filteren.  
+
+```{r kolommen filteren, echo=TRUE, echo=FALSE}
+metadata_clean <- sample_metadata %>%
+  select(
+    sample_name = 'Sample Name',
+    variant = 'Characteristics[Variant]',
+    sample_type = 'Characteristics[Sample type]',
+    timepoint = 'Factor Value[Timepoint]',
+    time_unit = 'Unit',
+    treatment = 'Factor Value[Treatment]'
+  ) %>%
+  as.data.frame()
+
+head(metadata_clean)
+```
+De sample metadata bevat informatie over de biologische oorsprong van de samples, de variant, het sampletype, het tijdspunt en de behandeling. Voor de EDA zijn vooral Sample Name, Variant, Sample type, Timepoint, time unit en Treatment relevant, omdat deze gebruikt kunnen worden om samples te groeperen en te visualiseren in PCA-analyses en heatmaps.   
+
+#### EDA Assay files
+Ik ga beginnen met kijken wat er allemaal in de assay files zit om zo te bepalen welke statistische analyses ik kan uitvoeren. Ik ga per assay bestand een aantal dingen bepalen namelijk:  
+-Hoeveel rijen en kolommen heeft het bestand?\ 
+-Welke kolommen zijn metadata/feature-info?\ 
+-Welke kolommen zijn sample-intensiteiten?\ 
+-Hebben de kolommen de goede variabele?\ 
+-Zijn er missende waarden of rare kolommen?\ 
+
+```{r inlezen assay file 1, echo=TRUE, eval=FALSE}
+setwd("/students/2025-2026/Thema08/lipolyse/unpacked/metabolomics")
+
+assay_gc_pmp <- read_tsv(
+  "a_MTBLS12307_GC-MS_positive__metabolite_profiling.txt"
+)
+# de functie glimpse geeft compacte samenvatting over de inhoud van het file
+glimpse(assay_gc_pmp)
+head(assay_gc_pmp)
+```
+
+Omdat er 37 kolommen zijn wil ik ze overzichtelijker maken en direct scheiden tussen sample kolommen en feature informatie om te kijken of er nuttige informatie instaat. De functie n = Inf print alle rijen overzichtelijk in combinatie met de functie tibble.  
+
+```{r assay file 1, echo=TRUE, eval=FALSE}
+colnames_assay_1 <- tibble(
+  colnumber = seq_along(colnames(assay_gc_pmp)),
+  colname = colnames(assay_gc_pmp)
+)
+
+print(colnames_assay_1, n = Inf)
+```
+Omdat een metabolieten analyse nieuw is voor mij en er niet extreem veel tijd is deze periode heb ik aan chat gpt gevraagd om deze kolomnamen te analyseren en een uitleg te geven wat elke kolom voor inhoud heeft. Voor de daadwerkelijke EDA heb ik niet dit bestand nodig als hoofddata, daarom laat ik dit voor nu zo staan. Mochten we het nog nodig hebben dan kan ik altijd nog bepaalde kolommen eruit selecteren. Ik kan dit bestand wel gebruiken om te controleren welk sample bij welke metabolomics meting hoort.  
+
+#### EDA MAF files
+Ik ga eerst 1 bestand inlezen met als doel om te ontdekken welke kolommen metaboliet informatie zijn en welke kolommen sample intensiteit zijn. Deze ga ik daarna van elkaar scheiden.  
+
+```{r maf file 1, echo=TRUE, eval=FALSE}
+setwd("/students/2025-2026/Thema08/lipolyse/unpacked/metabolomics/")
+
+maf_gc <- read_tsv("m_MTBLS12307_GC-MS_positive__metabolite_profiling_v2_maf.tsv")
+
+colnames(maf_gc)
+
+# Metaboliet informatie eruit hlaen
+annotatie_kolommen <- c(
+  "database_identifier",
+  "chemical_formula",
+  "smiles",
+  "inchi",
+  "metabolite_identification",
+  "mass_to_charge",
+  "retention_time",
+  "fragmentation",
+  "modifications",
+  "charge",
+  "taxonomy",
+  "species",
+  "database",
+  "database_version",
+  "reliability"
+)
+
+# Aparte tabel met alleen annotatie-informatie
+annotatie_data <- maf_gc %>%
+  select(any_of(annotatie_kolommen))
+
+# Aparte tabel met alles behalve de annotatiekolommen
+intensiteit_data <- maf_gc %>%
+  select(-any_of(annotatie_kolommen))
+
+# Controleren van data
+glimpse(annotatie_data)
+glimpse(intensiteit_data)
+```
+
+De kolommen met informatie zijn bruikbaar, echter de intensiteitskolommen lijken allemaal N/A te geven. Ik ga per kolom tellen hoeveel waarden er zijn die wel een getal terug geven.  
+
+```{r intensiteitskolommen inhoud tellen, echo=TRUE, eval=FALSE}
+gevulde_waarden <- maf_gc %>%
+  summarise(across(everything(), ~sum(!is.na(.)))) %>%
+  pivot_longer(
+    cols = everything(),
+    names_to = "kolom",
+    values_to = "aantal_gevulde_waarden"
+    )
+
+gevulde_waarden
+
+```
+
+Hieruit blijkt dat er maar 7 kolommen daadwerkelijk inhoud hebben, deze inhoud bevat alleen informatie over de metabolieten. Ik laat dit nu zo staan en verwerk dit verder wanneer dit nodig is. Ik wil graag weten of er in de andere MAF files wel bruikbare bestanden zitten dus ga ik deze net zoals hierboven controleren maar dan in een for loop.  
+
+```{r maf files controleren, echo=TRUE, eval=FALSE}
+setwd("/students/2025-2026/Thema08/lipolyse/unpacked/metabolomics/")
+
+# Zoek alle MAF-bestanden 
+maf_bestanden <- list.files(pattern = "maf.tsv$")
+
+for (bestand in maf_bestanden) {
+  
+  maf_data <- read_tsv(bestand, show_col_types = FALSE)
+  
+  # Tel per kolom hoeveel waarden NIET NA zijn
+  gevulde_waarden <- maf_data %>%
+    summarise(across(everything(), ~ sum(!is.na(.)))) %>%
+    pivot_longer(
+      cols = everything(),
+      names_to = "kolom",
+      values_to = "aantal_waarden"
+    )
+  
+  # Kolommen waar minimaal 1 waarde in staat
+  gevulde_kolommen <- gevulde_waarden %>%
+    filter(aantal_waarden > 0)
+  
+  # Kolommen die helemaal leeg zijn
+  lege_kolommen <- gevulde_waarden %>%
+    filter(aantal_waarden == 0)
+  
+  # Aantal numerieke kolommen
+  aantal_numerieke_kolommen <- maf_data %>%
+    select(where(is.numeric)) %>%
+    ncol()
+  
+  # Print een duidelijk overzicht
+  cat("\n==============================\n")
+  cat("Bestand:", bestand, "\n")
+  cat("Aantal rijen/metabolieten:", nrow(maf_data), "\n")
+  cat("Aantal kolommen:", ncol(maf_data), "\n")
+  cat("Aantal kolommen met waarden:", nrow(gevulde_kolommen), "\n")
+  cat("Aantal lege kolommen:", nrow(lege_kolommen), "\n")
+  cat("Aantal numerieke kolommen:", aantal_numerieke_kolommen, "\n")
+  
+  cat("\nKolommen met waarden:\n")
+  print(gevulde_kolommen)
+}
+```
+
+Ik ga nu hetzelfde doen voor de assay bestanden omdat ik nog geen werkbare data heb gevonden voor de EDA.  
+
+```{r assay files controleren, echo=TRUE, eval=FALSE}
+setwd("/students/2025-2026/Thema08/lipolyse/unpacked/metabolomics/")
+
+assay_bestanden <- list.files(pattern = "^a_")
+
+for (bestand in assay_bestanden) {
+  
+  assay_data <- read_tsv(bestand, show_col_types = FALSE)
+  
+  # Tel per kolom hoeveel waarden NIET NA zijn
+  gevulde_waarden <- assay_data %>%
+    summarise(across(everything(), ~ sum(!is.na(.)))) %>%
+    pivot_longer(
+      cols = everything(),
+      names_to = "kolom",
+      values_to = "aantal_waarden"
+    )
+  
+  # Kolommen waar minimaal 1 waarde in staat
+  gevulde_kolommen <- gevulde_waarden %>%
+    filter(aantal_waarden > 0)
+  
+  # Kolommen die helemaal leeg zijn
+  lege_kolommen <- gevulde_waarden %>%
+    filter(aantal_waarden == 0)
+  
+  # Aantal numerieke kolommen
+  aantal_numerieke_kolommen <- assay_data %>%
+    select(where(is.numeric)) %>%
+    ncol()
+  
+  # Print overzicht
+  cat("\n==============================\n")
+  cat("Bestand:", bestand, "\n")
+  cat("Aantal rijen/samples:", nrow(assay_data), "\n")
+  cat("Aantal kolommen:", ncol(assay_data), "\n")
+  cat("Aantal kolommen met waarden:", nrow(gevulde_kolommen), "\n")
+  cat("Aantal lege kolommen:", nrow(lege_kolommen), "\n")
+  cat("Aantal numerieke kolommen:", aantal_numerieke_kolommen, "\n")
+  
+  cat("\nKolommen met waarden:\n")
+  print(gevulde_kolommen)
+}
+
+```
+
+### Tussenconclusie metabolomics
+De bestanden die ik gekregen had bevat alleen metadata, daarom heb ik Marcel om hulp gevraagd. Hieruit bleek dat alleen de ruwe data beschikbaar is. Marcel heeft een script geschreven om te kijken wat hier allemaal inzit -> /students/2025-2026/Thema08/lipolyse/unpacked/metabolomics/ms-cdf-processing.R  
+
+Door middel van deze tutorial: https://bioconductor.org/packages/release/bioc/vignettes/xcms/inst/doc/xcms.html hebben we gekeken naar de chromatogrammen die gegenereerd zijn. 
+
+
+## PCA plot transcriptomics
+Omdat Gea haar Rstudio moeite heeft om de PCA normaal uit te voeren gaan we het proberen in mijn omgeving te doen. Ik gebruik een bestand met de genormaliseerde counts om de pca plot te maken. 
+
+
+```{r PCA-plot voorbereiden, eval=TRUE, echo=FALSE}
+setwd("/students/2025-2026/Thema08/lipolyse/unpacked/transcriptomics")
+
+counts_csv <- read.csv("/students/2025-2026/Thema08/lipolyse/unpacked/transcriptomics/genormaliseerde_counts.csv",
+header = TRUE,
+stringsAsFactors = FALSE)
+
+counts_wide <- counts_csv %>%
+  select(Geneid, sample, z_score) %>%
+  pivot_wider(
+    names_from = sample,
+    values_from = z_score
+  )
+
+counts <- counts_wide %>%
+  column_to_rownames("Geneid")
+
+```
+```{r PCA plotten, echo=TRUE, eval=FALSE}
+setwd("/students/2025-2026/Thema08/lipolyse/unpacked/transcriptomics")
+
+pca_input <- t(counts)
+
+pca_result <- prcomp(pca_input, scale. = FALSE)
+pca_df <- as.data.frame(pca_result$x)
+pca_df$sample <- rownames(pca_df)
+
+
+percent_var <- pca_result$sdev^2 / sum(pca_result$sdev^2) * 100
+
+ggplot(pca_df, aes(x = PC1, y = PC2, label = sample)) +
+  geom_point(size = 4) +
+  geom_text_repel() +
+  xlab(paste0("PC1: ", round(percent_var[1], 1), "% variantie")) +
+  ylab(paste0("PC2: ", round(percent_var[2], 1), "% variantie")) +
+  theme_minimal()
+
+```
+
+
+```{r}
+library(PCAtools)
+
+colnames(counts) <- basename(colnames(counts))
+
+colnames(counts) <- gsub(
+  "_Aligned.sortedByCoord.out.bam",
+  "",
+  colnames(counts)
+)
+
+metadata <- data.frame(
+  sample = c(
+    "SRR32635427", "SRR32635428", "SRR32635429",
+    "SRR32635430", "SRR32635431", "SRR32635432",
+    "SRR32635421", "SRR32635422", "SRR32635423",
+    "SRR32635424", "SRR32635425", "SRR32635426",
+    "SRR32635415", "SRR32635416", "SRR32635417",
+    "SRR32635418", "SRR32635419", "SRR32635420"
+  ),
+  group = c(
+    "0 h", "0 h", "0 h",
+    "0 h", "0 h", "0 h",
+    "4 h", "4 h", "4 h",
+    "4 h", "4 h", "4 h",
+    "24 h", "24 h", "24 h",
+    "24 h", "24 h", "24 h"
+  )
+)
+
+rownames(metadata) <- metadata$sample
+
+metadata <- metadata[colnames(counts), ]
+
+identical(colnames(counts), rownames(metadata))
+
+library(PCAtools)
+
+p <- pca(
+  mat = as.matrix(counts),
+  metadata = metadata,
+  removeVar = 0.1
+)
+
+biplot(
+  p,
+  colby = "group",
+  lab = rownames(metadata),
+  max.overlaps = Inf,
+  labSize = 3
+)
+
+
+```
+De pca blijft nu hetzelfde maar er zijn maar 3 samples. Dit is opgelost door de overlap eruit te halen zodat alle samples geplot worden. 
+
+```{r}
+library(PCAtools)
+
+# Sample-namen opschonen in counts
+colnames(counts) <- basename(colnames(counts))
+
+colnames(counts) <- gsub(
+  "_Aligned.sortedByCoord.out.bam",
+  "",
+  colnames(counts)
+)
+
+# Metadata maken
+metadata <- data.frame(
+  sample = c(
+    "SRR32635427", "SRR32635428", "SRR32635429",
+    "SRR32635430", "SRR32635431", "SRR32635432",
+    "SRR32635421", "SRR32635422", "SRR32635423",
+    "SRR32635424", "SRR32635425", "SRR32635426",
+    "SRR32635415", "SRR32635416", "SRR32635417",
+    "SRR32635418", "SRR32635419", "SRR32635420"
+  ),
+  group = c(
+    "0 h", "0 h", "0 h",
+    "0 h", "0 h", "0 h",
+    "4 h", "4 h", "4 h",
+    "4 h", "4 h", "4 h",
+    "24 h", "24 h", "24 h",
+    "24 h", "24 h", "24 h"
+  )
+)
+
+# Outliers aangeven
+outliers <- c("SRR32635416", "SRR32635421")
+
+# Outliers verwijderen uit counts
+counts_without_outliers <- counts[, !colnames(counts) %in% outliers]
+
+# Outliers verwijderen uit metadata
+metadata_without_outliers <- metadata[!metadata$sample %in% outliers, ]
+
+# Sample-namen als rownames zetten
+rownames(metadata_without_outliers) <- metadata_without_outliers$sample
+
+# Metadata in dezelfde volgorde zetten als de kolommen van counts
+metadata_without_outliers <- metadata_without_outliers[colnames(counts_without_outliers), ]
+
+# Controleren of counts en metadata exact matchen
+identical(
+  colnames(counts_without_outliers),
+  rownames(metadata_without_outliers)
+)
+
+# PCA uitvoeren
+p <- pca(
+  mat = as.matrix(counts_without_outliers),
+  metadata = metadata_without_outliers,
+  removeVar = 0.1
+)
+
+# PCA plot maken
+biplot(
+  p,
+  colby = "group",
+  lab = rownames(metadata_without_outliers)
+)
+```
+
+
+ 
+ 
