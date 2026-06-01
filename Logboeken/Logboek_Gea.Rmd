@@ -791,4 +791,3 @@ cat("Datamodus:", mode(transcriptomics_matrix), "\n")
 ```
 
 De feature matrix is nu gemaakt. Ik heb hiervoor de volledig genormaliseerde count data gebruikt die ik gemaakt heb bij mijn EDA. In de matrix heb ik de samples als kolommen en de features/genen als rijen opgeslagen. Tijdens het normaliseren ben ik een aantal features kwijt geraakt, dit zijn mogelijk genen die over elke sample dezelfde waarde heeft. Verder is ook te zien dat mijn matrix geen NA-, NaN-, of Inf-waarden bevatten. Dit betekent dat er geen waarden zijn die problemen gaan veroorzaken bij de verdere MOFA+-analyse.
-
