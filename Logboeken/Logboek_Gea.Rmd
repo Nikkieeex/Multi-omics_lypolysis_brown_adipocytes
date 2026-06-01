@@ -10,8 +10,7 @@ Wetenschappelijk artikel: https://www.sciencedirect.com/science/article/pii/S258
 Groepsgenoten: Janine Postmus, Joris Deelstra, Nicole Bovenga
 Deadline: 2026-05-04
 
-Gebruikte tools:
-```{r, libraries}
+```{r libraries, include=FALSE}
 library(Rsamtools)
 library(dplyr)
 library(tidyr)
@@ -19,6 +18,29 @@ library(ggplot2)
 library(pheatmap)
 library(ggrepel)
 library(PCAtools)
+```
+
+### Gebruikte tools met versies
+```{r tool-versies, echo=FALSE}
+packages <- c(
+  "Rsamtools",
+  "dplyr",
+  "tidyr",
+  "ggplot2",
+  "pheatmap",
+  "ggrepel",
+  "PCAtools"
+)
+
+tool_versions <- data.frame(
+  Tool = c("R", packages),
+  Versie = c(
+    R.version.string,
+    sapply(packages, function(pkg) as.character(packageVersion(pkg)))
+  )
+)
+
+knitr::kable(tool_versions, row.names = FALSE)
 ```
 
 
@@ -34,20 +56,23 @@ Bij een globale verkenning van de map met BAM-files viel op dat er geen bijbehor
 
 Nadat dit allemaal uitgevoerd is ga ik met featureCounts een count tabel maken. Hierbij worden alignments uit de BAM-files gekoppeld aan genen of features uit de annotatie. De count tabel geeft per gen weer hoeveel reads aan elk sample zijn toegewezen.
 
-```{r, BAI-files maken}
+```{r BAM files inlezen, include=FALSE}
 bam_files <- list.files(
   path = "/students/2025-2026/Thema08/lipolyse/unpacked/transcriptomics",
   pattern = "\\.bam$",
   full.names = TRUE
 )
 
+```
+
+```{r BAI-files maken, eval=FALSE}
 indexBam(bam_files)
 
 ```
 
 Voor de zekerheid check ik even of er voor alle BAM-files nu een BAI-file gemaakt is. Dit om te voorkomen dat er verderop in de verkenning errors ontstaan. 
 
-```{r}
+```{r BAI-controle}
 data.frame(
   bam = basename(bam_files),
   index_exists = file.exists(paste0(bam_files, ".bai"))
@@ -56,7 +81,7 @@ data.frame(
 
 Nu er voor elke BAM-file een BAI-file gemaakt is, ga ik verder met de verkenning. Ik ga eerst kijken naar de total reads, mapped reads, unmapped reads en de percentage gemapte reads. 
 
-```{r}
+```{r BAM-verkenning}
 bam_summary <- data.frame(
   sample = basename(bam_files),
   total_records = NA,
@@ -77,7 +102,10 @@ for (i in seq_along(bam_files)) {
   )
 }
 
-bam_summary
+cat("Laagste aantal mapped reads:", min(bam_summary$mapped), "\n")
+cat("Hoogste aantal mapped reads:", max(bam_summary$mapped), "\n")
+cat("Gemiddeld mapping percentage:", mean(bam_summary$mapping_percentage), "\n")
+cat("Aantal samples met unmapped reads:", sum(bam_summary$unmapped > 0), "\n")
 ```
 
 Het is opvallend dat voor elk BAM-file een mapping percentage van 100% werd gevonden. Dit komt waarschijnlijk doordat alleen de gemapte alignments in de BAM-files opgenomen zijn en de ongemapte reads kunnen mogelijk weggeschreven zijn in andere outputbestanden of vermeld worden in logbestanden. 
@@ -87,7 +115,7 @@ Het laagste aantal gemapte alignments is 40.794.932. Dit laat zien dat ook het k
 Na deze controle ga ik een count tabel maken met featureCounts. Hierbij worden de alignments uit de BAM-files gekoppeld aan genen of features uit de annotatie. De count tabel geeft per gen weer hoeveel reads aan elk sample zijn toegewezen. Deze tabel kan ik vervolgens gebruiken als basis voor de verdere exploratieve data-analyse.
 
 De count tabel heb ik gemaakt door de onderstaande code uit te voeren in de terminal.
-```{bash}
+```{bash, eval=FALSE}
 featureCounts -T 64 -p -a ref_genome/Mus_musculus.GRCm39.112.gtf -o counts.txt *.bam
 ```
 
@@ -104,10 +132,7 @@ counts <- read.delim(
   check.names = FALSE
 )
 
-head(counts)
 str(counts)
-colnames(counts)
-dim(counts)
 ```
 
 De count tabel is ingelezen met read.delim(). Vervolgens is er met head() en str() gecontroleerd of de tabel correct is ingelezen. Ik krijg 57.186 features en 24 kolommen terug. De eerste kolommen bevatten geninformatie, zoals GeneID, Chr, start, end, strand en length. De rest van de kolommen bevatten de read counts per sample. Ik heb ook even gekeken naar de datatypes van de kolommen en deze zien er bruikbaar uit. De kolommen die de counts bevatten zijn integers en de kolom met de gen id is een character, dit is bruikbaar voor verdere verwerking. 
@@ -122,13 +147,11 @@ rownames(count_matrix) <- counts$Geneid
 count_matrix <- as.data.frame(lapply(count_matrix, as.numeric))
 rownames(count_matrix) <- counts$Geneid
 
-dim(count_matrix)
-head(count_matrix)
 ```
 
 Ik ga eerst kijken naar de verdeling van de counts per sample met behulp van een boxplot. Hiermee kan ik snel controleren of de samples een vergelijkbare countverdeling hebben en of er sprake is van extreme waarden of scheefheid in de data. RNA-seq countdata bevat vaak veel lage waarden en enkele zeer hoge waarden. Hierdoor verwacht ik dat de counts niet normaal verdeeld zijn.
 
-```{r}
+```{r, echo=FALSE}
 raw_long <- count_matrix %>%
   mutate(Geneid = rownames(count_matrix)) %>%
   pivot_longer(
@@ -137,9 +160,6 @@ raw_long <- count_matrix %>%
     values_to = "count"
   )
 
-dim(raw_long)
-colnames(raw_long)
-head(rownames(raw_long))
 
 ggplot(raw_long, aes(x = sample, y = count)) + 
   geom_boxplot(outlier.size = 0.5) +
@@ -158,7 +178,7 @@ Deze scheve verdeling zorgt ervoor dat ik als vervolg stap een logtransformatie 
 
 Omdat ik veel '0' heb in mijn counts, voeg ik een +1 toe in mijn log. Dit komt er dan uit te zien als log2(count + 1). Een log uitvoeren op 0 levert '-Inf' op, wat min oneindig betekent en hier kan ik niet mee verder rekenen. Log2(0 + 1) levert 0 op, dus de 0 counts worden niet beinvloed door de logtransformatie.
 
-```{r}
+```{r, echo=FALSE}
 log_counts <- log2(count_matrix + 1)
 
 log_long <- log_counts %>%
@@ -184,7 +204,7 @@ Na de logtransformatie is de verdeling van de counts per sample duidelijker zich
 
 De logtransformatie vermindert de scheefheid, maar corrigeert nog niet voor de verschillen in library size tussen samples. Library size geeft het totaal aantal getelde reads/fragmenten aan per sample. Dit ga ik dus doen omdat verschillen in sequencingdiepte invloed kunnen hebben op de countwaarden tussen samples.
 
-```{r}
+```{r, echo=FALSE}
 library_sizes <- colSums(count_matrix)
 
 library_df <- data.frame(
@@ -207,7 +227,7 @@ De library size is bepaald om per sample alle reads bij elkaar op te tellen. In 
 
 
 
-```{r}
+```{r, echo=FALSE}
 cpm_counts <- sweep(
   count_matrix,
   2,
@@ -243,10 +263,7 @@ In de boxplot na de sample-normalisatie zijn de samples beter met elkaar te verg
 Als laatste voer ik een feature-normalisatie uit met de z-score. Hierbij wordt per gen de gemiddelde expressie afgetrokken en gedeeld door de standaarddeviatie. Hierdoor worden de waarden per gen geschaald, zodat zichtbaar wordt welke samples relatief hoge of lage waarden hebben voor een bepaald gen. Deze stap is vooral nuttig om expressiepatronen tussen samples te vergelijken.
 
 
-
-
-
-```{r}
+```{r, echo=FALSE}
 z_counts <- t(scale(t(log_cpm)))
 
 z_counts <- z_counts[complete.cases(z_counts),]
@@ -275,16 +292,7 @@ In de boxplot na de feature-normalisatie liggen de meeste samples redelijk rond 
 Omdat de sample SRR32635416 zo opvallend is ga ik daar specifiek naar kijken. Ik ga een PCA uitvoeren op de getransformeerde CPM-data, waarbij dit sample specifiek gemarkeerd wordt.
 
 
-```{r}
-cat("log_cpm:", nrow(log_cpm), "features,", ncol(log_cpm), "samples\n")
-cat("Som log_cpm:", sum(as.matrix(log_cpm)), "\n")
-
-cat("z_counts:", nrow(z_counts), "features,", ncol(z_counts), "samples\n")
-cat("Som z_counts:", sum(as.matrix(z_counts)), "\n")
-```
-
-
-```{r}
+```{r, echo=FALSE}
 pca_logcpm_result <- prcomp(
   t(log_cpm),
   center = TRUE,
@@ -329,16 +337,80 @@ In de PCA is wel te zien dat SRR3265416 zich onderscheidt van de andere samples 
 
 Ik ga eerst kijken welke samples precies afwijken in de PCA. Hier krijg ik de namen van de samples.
 
+#### PCA verbetering 
+Deze code is tussendoor toegevoegd omdat ik deze output nodig heb voor code die ik eerder heb geschreven.
+
+Afgelopen weekend ben ik erachter gekomen dat mijn pca elke keer verandert wanneer ik deze uitvoer. Janine heeft mij daarmee geholpen om een tool te vinden die PCA kan maken die constant blijft. Dit is gelukkig gelukt met de library PCAtools. De code heb ik uit haar logboek overgenomen omdat deze uitkomst nodig is voor een van de onderbouwingen voor de afwijkende samples. Deze samples heb ik ook gevonden bij de eerste keer dat ik de PCA heb gemaakt. Dus de onderzoek naar waarom de samples afwijken kunnen nog steeds gebruikt worden. In de code heb ik wel een aantal variabelen aangepast zodat ik geen overlap heb met de oude PCA plots.
+
+```{r code van Janine, warning=FALSE, message=FALSE}
+pca_tools_matrix <- as.matrix(z_counts)
+
+colnames(pca_tools_matrix) <- basename(colnames(pca_tools_matrix))
+
+colnames(pca_tools_matrix) <- gsub(
+  "_Aligned.sortedByCoord.out.bam",
+  "",
+  colnames(pca_tools_matrix)
+)
+
+pca_tools_metadata <- data.frame(
+  sample = c(
+    "SRR32635427", "SRR32635428", "SRR32635429",
+    "SRR32635430", "SRR32635431", "SRR32635432",
+    "SRR32635421", "SRR32635422", "SRR32635423",
+    "SRR32635424", "SRR32635425", "SRR32635426",
+    "SRR32635415", "SRR32635416", "SRR32635417",
+    "SRR32635418", "SRR32635419", "SRR32635420"
+  ),
+  group = c(
+    "0 h", "0 h", "0 h",
+    "0 h", "0 h", "0 h",
+    "4 h", "4 h", "4 h",
+    "4 h", "4 h", "4 h",
+    "24 h", "24 h", "24 h",
+    "24 h", "24 h", "24 h"
+  )
+)
+
+rownames(pca_tools_metadata) <- pca_tools_metadata$sample
+
+pca_tools_metadata <- pca_tools_metadata[colnames(pca_tools_matrix), ]
+
+pca_tools_result <- pca(
+  mat = as.matrix(pca_tools_matrix),
+  metadata = pca_tools_metadata,
+  removeVar = 0.1
+)
+
+pca_tools_labels <- ifelse(
+  rownames(pca_tools_metadata) %in% c("SRR32635416", "SRR32635421"),
+  rownames(pca_tools_metadata),
+  ""
+)
+
+biplot(
+  pca_tools_result,
+  colby = "group",
+  lab = pca_tools_labels,
+  labSize = 3
+)
+```
+
+
 ```{r}
-max_PC1 <- pca_logcpm_df[which.max(pca_logcpm_df$PC1), ]
-max_PC2 <- pca_logcpm_df[which.max(pca_logcpm_df$PC2), ]
+pca_scores <- as.data.frame(pca_tools_result$rotated)
+
+pca_scores$sample <- rownames(pca_scores)
+
+max_PC1 <- pca_scores[which.max(pca_scores$PC1), ]
+max_PC2 <- pca_scores[which.max(pca_scores$PC2), ]
 
 cat("Sample met de hoogste PC1-score:", max_PC1$sample, "\n")
 
 cat("Sample met de hoogste PC2-score:", max_PC2$sample)
 ```
 
-Dit vertelt mij dat de sample met de hoogste PC1-score sample SRR32635421 is. De sample met de hoogste PC2-score is SRR32635416, die al eerder opviel en dit bevestigt nu dat deze sample afwijkt. 
+Dit vertelt mij dat de sample met de hoogste PC1-score sample SRR32635416 is. De sample met de hoogste PC2-score is SRR32635421, die al eerder opviel en dit bevestigt nu dat deze sample afwijkt. 
 
 Aangezien dit stukje code werkt op de output van de pca die constant verandert, komt het niet overeen met wat er besproken wordt als resultaat. Bij het kopje "18-05-2026" is de correct werkende PCA te zien waar deze resultaten in terug te vinden zijn. 
 
@@ -352,12 +424,28 @@ fc_summary <- read.delim(
   check.names = FALSE
 )
 
-fc_summary
+samples_interessant <- c(
+  "SRR32635416_Aligned.sortedByCoord.out.bam",
+  "SRR32635421_Aligned.sortedByCoord.out.bam"
+)
+
+categorieen_interessant <- c(
+  "Assigned",
+  "Unassigned_MultiMapping",
+  "Unassigned_NoFeatures",
+  "Unassigned_Ambiguity"
+)
+
+fc_interessant_kort <- fc_summary %>%
+  filter(Status %in% categorieen_interessant) %>%
+  select(Status, all_of(samples_interessant))
+
+knitr::kable(fc_interessant_kort, row.names = FALSE)
 ```
 
 Dit laat zien dat SRR32635416 28902814 assigned en 43622058 unassigned reads heeft. SRR32635421 heeft 17883374 assigned en 22911558 unassigned reads. Er lijkt verschil te zitten in de assigned vs unassigned reads voor elke sample, dus ik ga voor elke sample de percentage bepalen en deze plotten, waarbij ik de 2 opvallende samples uitlicht. 
 
-```{r}
+```{r, echo=FALSE}
 fc_long <- fc_summary %>%
   pivot_longer(
     cols = -Status,
@@ -411,7 +499,7 @@ In deze grafiek is duidelijk te zien dat SRR32635416 het hoogste percentage unas
 
 Omdat de percentage unassigned reads niks opvallends liet zien voor SRR32635421, ga ik nu kijken naar de afzonderlijke unassigned-categorieën. 
 
-```{r}
+```{r, echo=FALSE}
 fc_long_percentages <- fc_long %>%
   group_by(sample) %>%
   mutate(
@@ -420,9 +508,6 @@ fc_long_percentages <- fc_long %>%
   ) %>%
   ungroup()
 
-fc_long_percentages %>%
-  filter(grepl("SRR32635421", sample)) %>%
-  arrange(desc(percentage))
 
 unassigned_detail_plot <- fc_long_percentages %>%
   filter(
@@ -470,7 +555,7 @@ Deze plot toont aan dat er voor sample SRR32635421 nog geen duidelijke mogelijke
 
 Ik kijk naar de aantal gedetecteerde genen per sample door de genen te tellen die een count hebben die hoger is dan 0. Een afwijkend laag of hoog aantal gedetecteerde genen kan wijzen op een verschil in expressieprofiel in het sample. 
 
-```{r}
+```{r, echo=FALSE}
 detected_genes <- data.frame(
   sample = colnames(count_matrix),
   detected_genes = colSums(count_matrix > 0)
@@ -523,7 +608,7 @@ top_pc1_negative
 
 Dit zijn de genen die het meest bijdragen aan PC1, ik ga nu kijken of deze genen erg opvallen bij SRR32635421.
 
-```{r}
+```{r, echo=FALSE}
 top_pc1_genes_heatmap <- c(
   names(top_pc1_positive),
   names(top_pc1_negative)
@@ -566,10 +651,9 @@ pheatmap(
 )
 ```
 
-In de heatmap is te zien dat SRR32635421 een ander expressiepatroon heeft dan de meeste andere samples voor de genen die het sterkst bijdragen aan PC1. Dit ondersteunt de PCA waarbij dit sample afweek van de rest. Vooral bij meerdere genen lijkt SRR32635421 relatief hogere expressiewaarden te hebben dan de meeste andere samples.
+In de heatmap is te zien dat SRR32635416 een ander expressiepatroon heeft dan de meeste andere samples voor de genen die het sterkst bijdragen aan PC1. Dit ondersteunt de PCA waarbij dit sample afweek van de rest. Vooral bij meerdere genen lijkt SRR32635416 relatief hogere expressiewaarden te hebben dan de meeste andere samples.
 
-Ook SRR32635416 laat een afwijkend patroon zien, wat overeenkomt met de eerdere observatie in de PCA.
-
+Omdat mijn PCA met de prcomp methode elke keer verandert bij het uitvoeren heb ik het op de handmatige manier geprobeerd. 
 ```{r}
 # Data omzetten: samples in rijen, genen/features in kolommen
 P <- t(z_counts)
@@ -627,68 +711,15 @@ ggplot(pca_plot, aes(x = PC1, y = PC2, color = tijdstip)) +
   )
 ```
 
+Deze verandert ook elke keer. Ik ga in de groep om hulp vragen.
+
 #### 18-05-2026
-Afgelopen weekend ben ik erachter gekomen dat mijn pca elke keer verandert wanneer ik deze uitvoer. Janine heeft mij daarmee geholpen om een tool te vinden die PCA kan maken die constant blijft. Dit is gelukkig gelukt met de library PCAtools. De code heb ik uit haar logboek overgenomen omdat deze uitkomst nodig is voor een van de onderbouwingen voor de afwijkende samples. Deze samples heb ik ook gevonden bij de eerste keer dat ik de PCA heb gemaakt. Dus de onderzoek naar waarom de samples afwijken kunnen nog steeds gebruikt worden. In de code heb ik wel een aantal variabelen aangepast zodat ik geen overlap heb met de oude PCA plots
+Janine heeft mij geholpen met de oplossing voor de PCA. Bij haar was deze code stabiel, dus die heb ik overgenomen en onder het kopje "PCA verbetering" gezet. De output van deze PCA heb ik nodig voor analyse over de 2 afwijkende samples die ik eerder heb gevonden.
 
-```{r}
-pca_tools_matrix <- as.matrix(z_counts)
-
-colnames(pca_tools_matrix) <- basename(colnames(pca_tools_matrix))
-
-colnames(pca_tools_matrix) <- gsub(
-  "_Aligned.sortedByCoord.out.bam",
-  "",
-  colnames(pca_tools_matrix)
-)
-
-pca_tools_metadata <- data.frame(
-  sample = c(
-    "SRR32635427", "SRR32635428", "SRR32635429",
-    "SRR32635430", "SRR32635431", "SRR32635432",
-    "SRR32635421", "SRR32635422", "SRR32635423",
-    "SRR32635424", "SRR32635425", "SRR32635426",
-    "SRR32635415", "SRR32635416", "SRR32635417",
-    "SRR32635418", "SRR32635419", "SRR32635420"
-  ),
-  group = c(
-    "0 h", "0 h", "0 h",
-    "0 h", "0 h", "0 h",
-    "4 h", "4 h", "4 h",
-    "4 h", "4 h", "4 h",
-    "24 h", "24 h", "24 h",
-    "24 h", "24 h", "24 h"
-  )
-)
-
-rownames(pca_tools_metadata) <- pca_tools_metadata$sample
-
-pca_tools_metadata <- pca_tools_metadata[colnames(pca_tools_matrix), ]
-
-identical(colnames(pca_tools_matrix), rownames(pca_tools_metadata))
-
-pca_tools_result <- pca(
-  mat = as.matrix(pca_tools_matrix),
-  metadata = pca_tools_metadata,
-  removeVar = 0.1
-)
-
-pca_tools_labels <- ifelse(
-  rownames(pca_tools_metadata) %in% c("SRR32635416", "SRR32635421"),
-  rownames(pca_tools_metadata),
-  ""
-)
-
-biplot(
-  pca_tools_result,
-  colby = "group",
-  lab = pca_tools_labels,
-  labSize = 3
-)
-```
 #### 22-05-2026
 
-In deze PCA is te zien dat SRR32635416 juist het meeste afwijkt op PC1 en sample SRR32635421 het meest afwijkt op PC2. Het bewijst nogsteeds dat deze samples afwijkend zijn, maar alleen de heatmap op de genen die het meeste invloed hebben op PC1 wijst voor de sample SRR32635421 niks meer uit. Om deze reden voer ik het nog even snel op de genen die het meeste invloed hebben op PC2 uit, en dit vergelijk ik dan met de heatmap van de top 40 van de PC1 genen. 
-```{r}
+In de PCA van 18-05-2026 is te zien dat SRR32635416 juist het meeste afwijkt op PC1 en sample SRR32635421 het meest afwijkt op PC2. Het bewijst nogsteeds dat deze samples afwijkend zijn, maar alleen de heatmap op de genen die het meeste invloed hebben op PC1 wijst voor de sample SRR32635421 niks meer uit. Om deze reden voer ik het nog even snel op de genen die het meeste invloed hebben op PC2 uit, en dit vergelijk ik dan met de heatmap van de top 40 van de PC1 genen. 
+```{r, echo=FALSE}
 pc2_loadings <- pca_tools_result$loadings[, 2]
 
 names(pc2_loadings) <- rownames(pca_tools_result$loadings)
@@ -706,8 +737,6 @@ top_pc2_genes_heatmap <- c(
 top_pc2_genes_heatmap <- top_pc2_genes_heatmap[
   top_pc2_genes_heatmap %in% rownames(pca_tools_matrix)
 ]
-
-length(top_pc2_genes_heatmap)
 
 pc2_heatmap_values <- pca_tools_matrix[top_pc2_genes_heatmap, , drop = FALSE]
 
@@ -760,34 +789,80 @@ colnames(transcriptomics_matrix) <- gsub(
   "",
   colnames(transcriptomics_matrix)
 )
+```
 
+```{r, eval=FALSE}
 write.csv(
   transcriptomics_matrix,
   "/students/2025-2026/Thema08/lipolyse/unpacked/transcriptomics/transcriptomics_matrix.csv"
 )
+```
 
+```{r, echo=FALSE}
 # Controles
-cat("Controle van de transcriptomics matrix voor MOFA+\n")
-cat("------------------------------------------------\n\n")
+matrix_controle <- data.frame(
+  Controle = c(
+    "Aantal genen/features",
+    "Aantal samples",
+    "Aantal NA-waarden",
+    "Aantal NaN-waarden",
+    "Aantal Inf-waarden",
+    "Objectklasse",
+    "Datamodus"
+  ),
+  Waarde = c(
+    nrow(transcriptomics_matrix),
+    ncol(transcriptomics_matrix),
+    sum(is.na(transcriptomics_matrix)),
+    sum(is.nan(transcriptomics_matrix)),
+    sum(is.infinite(transcriptomics_matrix)),
+    paste(class(transcriptomics_matrix), collapse = ", "),
+    mode(transcriptomics_matrix)
+  )
+)
 
-cat("Dimensies van de matrix:\n")
-cat("Aantal genen/features:", nrow(transcriptomics_matrix), "\n")
-cat("Aantal samples:", ncol(transcriptomics_matrix), "\n\n")
-
-cat("Eerste 6 genen/features:\n")
-print(head(rownames(transcriptomics_matrix)))
-
-cat("\nEerste 6 samples:\n")
-print(head(colnames(transcriptomics_matrix)))
-
-cat("\nControle op ontbrekende of niet-eindige waarden:\n")
-cat("Aantal NA-waarden:", sum(is.na(transcriptomics_matrix)), "\n")
-cat("Aantal NaN-waarden:", sum(is.nan(transcriptomics_matrix)), "\n")
-cat("Aantal Inf-waarden:", sum(is.infinite(transcriptomics_matrix)), "\n\n")
-
-cat("Controle matrixstructuur:\n")
-cat("Objectklasse:", class(transcriptomics_matrix), "\n")
-cat("Datamodus:", mode(transcriptomics_matrix), "\n")
+knitr::kable(matrix_controle, row.names = FALSE)
 ```
 
 De feature matrix is nu gemaakt. Ik heb hiervoor de volledig genormaliseerde count data gebruikt die ik gemaakt heb bij mijn EDA. In de matrix heb ik de samples als kolommen en de features/genen als rijen opgeslagen. Tijdens het normaliseren ben ik een aantal features kwijt geraakt, dit zijn mogelijk genen die over elke sample dezelfde waarde heeft. Verder is ook te zien dat mijn matrix geen NA-, NaN-, of Inf-waarden bevatten. Dit betekent dat er geen waarden zijn die problemen gaan veroorzaken bij de verdere MOFA+-analyse.
+
+#### 01-06-2026
+
+Joris is bezig gegaan met het runnen van MOFA+. Dit is helaas niet gelukt. Daarom is afgelopen vrijdag (29-05-2026), in overleg met Marcel, een nieuw plan bedacht. Omdat MOFA+ niet succesvol kon worden uitgevoerd, is er gekozen om de transcriptomics- en proteomicsresultaten eerst apart te analyseren en daarna met elkaar te vergelijken.
+
+Joris gaat DEG-lijsten maken van de transcriptomics, daarbij maakt hij een Venn-diagram en maakt een top 10 of 15 van de meest interessante genen. Nicole maakt de DAP-lijsten van de proteomics en maakt vervolgens een overlap lijst met de DAP-lijsten en DEG-lijsten. Ik ga me focussen op het uitvoeren van Metascape op de DEG- en DAP-lijsten, maak daaruit een top 15 van de overlappende genen/eiwitten en daaruit maak ik een aantal plotjes die in het artikel gebruikt kunnen worden. Janine gaat aan de hand van die top 15 overlappende genen/eiwitten opzoeken wat ze precies doen. 
+
+Metascape is een webgebaseerde tool voor genlijst-annotatie en enrichment-analyse. Hiermee kunnen ingevoerde gen- of eiwitlijsten worden gekoppeld aan biologische processen, pathways en eiwitnetwerken. Deze tool is nuttig voor ons omdat de DEG- en DAP-lijsten op zichzelf aangeven welke genen of eiwitten significant veranderen, maar nog niet direct laten zien welke biologische processen hierbij betrokken worden. In dit project wordt Metascape daarom gebruikt om per DEG- en DAP-lijst de belangrijkste verrijkte pathways te bepalen en deze te vergelijken tussen de transcriptomics en proteomics.
+
+Ik heb de DAP-lijsten al binnengehaald van de git-repository, dus deze ga ik eerst inlezen en controleren of het goed ingelezen wordt en controleren of er geen missende waarden aanwezig zijn. 
+
+```{r dap-inlezen}
+dap_all <- read.csv("../DAP_lists/All_DAPs_combined.csv")
+```
+
+```{r dap-controle, echo=FALSE}
+
+dap_controle <- data.frame(
+  Controle = c(
+    "Aantal rijen",
+    "Aantal kolommen",
+    "Aantal missende waarden",
+    "Aantal lege cellen"
+  ),
+  Waarde = c(
+    nrow(dap_all),
+    ncol(dap_all),
+    sum(is.na(dap_all)),
+    sum(dap_all == "", na.rm = TRUE)
+  )
+)
+
+knitr::kable(dap_controle, row.names = FALSE)
+
+```
+De kolomnamen zijn zoals ik het heb verwacht, tijdens het overleg is er afgesproken dat in de DAP lijsten de gen ID, logFC, p-waarde en de aangepaste p-waarde geleverd zouden worden. Ik heb hier ook nog een kolom met 'comparison', deze kolom geeft aan uit welke tijdsvergelijking de DAP afkomstig is. Ook heb ik geen missende waarden of lege cellen in deze dataset. 
+
+### Referenties
+
+Metascape is gebruikt voor de enrichment-analyse: [Metascape](https://metascape.org/gp/index.html#/main/step1)
+Beschrijving van de metascape tool: [Metascape artikel](https://pubmed.ncbi.nlm.nih.gov/30944313/)
