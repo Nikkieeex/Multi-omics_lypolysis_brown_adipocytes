@@ -18,6 +18,8 @@ library(ggplot2)
 library(pheatmap)
 library(ggrepel)
 library(PCAtools)
+library(readxl)
+library(stringr)
 ```
 
 ### Gebruikte tools met versies
@@ -29,7 +31,9 @@ packages <- c(
   "ggplot2",
   "pheatmap",
   "ggrepel",
-  "PCAtools"
+  "PCAtools",
+  "readxl",
+  "stringr"
 )
 
 tool_versions <- data.frame(
@@ -862,7 +866,1500 @@ knitr::kable(dap_controle, row.names = FALSE)
 ```
 De kolomnamen zijn zoals ik het heb verwacht, tijdens het overleg is er afgesproken dat in de DAP lijsten de gen ID, logFC, p-waarde en de aangepaste p-waarde geleverd zouden worden. Ik heb hier ook nog een kolom met 'comparison', deze kolom geeft aan uit welke tijdsvergelijking de DAP afkomstig is. Ook heb ik geen missende waarden of lege cellen in deze dataset. 
 
+#### 02-06-2026
+
+Ik heb ondertussen ook de DEG-lijsten gekregen van Joris, deze ga ik net als de DAP-lijsten bekijken en ik wil van beide nog even de statistsiche waarden bekijken om te bevestigen dat ze op dezelfde manier gefilterd zijn.
+
+```{r degs inlezen}
+
+deg_ab <- read.csv("/students/2025-2026/Thema08/lipolyse/unpacked/transcriptomics/significant_DEG_AB_rna.csv")
+
+deg_ac <- read.csv("/students/2025-2026/Thema08/lipolyse/unpacked/transcriptomics/significant_DEG_AC_rna.csv")
+
+deg_bc <- read.csv("/students/2025-2026/Thema08/lipolyse/unpacked/transcriptomics/significant_DEG_BC_rna.csv")
+
+deg_4h_vs_0h <- deg_ab
+deg_24h_vs_0h <- deg_ac
+deg_24h_vs_4h <- deg_bc
+
+```
+
+```{r degs controle, echo=FALSE}
+deg_controle <- data.frame(
+  Vergelijking = c(
+    "4h_vs_0h",
+    "24h_vs_0h",
+    "24h_vs_4h"
+  ),
+  Aantal_rijen = c(
+    nrow(deg_4h_vs_0h),
+    nrow(deg_24h_vs_0h),
+    nrow(deg_24h_vs_4h)
+  ),
+  Aantal_kolommen = c(
+    ncol(deg_4h_vs_0h),
+    ncol(deg_24h_vs_0h),
+    ncol(deg_24h_vs_4h)
+  ),
+  Aantal_missende_waarden = c(
+    sum(is.na(deg_4h_vs_0h)),
+    sum(is.na(deg_24h_vs_0h)),
+    sum(is.na(deg_24h_vs_4h))
+  ),
+  Aantal_lege_cellen = c(
+    sum(deg_4h_vs_0h == "", na.rm = TRUE),
+    sum(deg_24h_vs_0h == "", na.rm = TRUE),
+    sum(deg_24h_vs_4h == "", na.rm = TRUE)
+  )
+)
+
+knitr::kable(deg_controle, row.names = FALSE)
+```
+In deze controle is te zien dat er geen missende waarden en lege cellen zijn. Ik heb 7 kolommen, zoals verwacht dus ik ga nu verder met de statistieke beoordeling van DEG- en DAP-lijsten.
+
+```{r degs statistische controle}
+deg_stat_controle <- data.frame(
+  Vergelijking = c("4h_vs_0h", "24h_vs_0h", "24h_vs_4h"),
+  
+  Aantal_DEGs = c(
+    nrow(deg_4h_vs_0h),
+    nrow(deg_24h_vs_0h),
+    nrow(deg_24h_vs_4h)
+  ),
+  
+  Min_padj = c(
+    min(deg_4h_vs_0h$padj, na.rm = TRUE),
+    min(deg_24h_vs_0h$padj, na.rm = TRUE),
+    min(deg_24h_vs_4h$padj, na.rm = TRUE)
+  ),
+  
+  Max_padj = c(
+    max(deg_4h_vs_0h$padj, na.rm = TRUE),
+    max(deg_24h_vs_0h$padj, na.rm = TRUE),
+    max(deg_24h_vs_4h$padj, na.rm = TRUE)
+  ),
+  
+  Aantal_padj_boven_0.05 = c(
+    sum(deg_4h_vs_0h$padj >= 0.05, na.rm = TRUE),
+    sum(deg_24h_vs_0h$padj >= 0.05, na.rm = TRUE),
+    sum(deg_24h_vs_4h$padj >= 0.05, na.rm = TRUE)
+  ),
+  
+  Upregulated = c(
+    sum(deg_4h_vs_0h$log2FoldChange > 0, na.rm = TRUE),
+    sum(deg_24h_vs_0h$log2FoldChange > 0, na.rm = TRUE),
+    sum(deg_24h_vs_4h$log2FoldChange > 0, na.rm = TRUE)
+  ),
+  
+  Downregulated = c(
+    sum(deg_4h_vs_0h$log2FoldChange < 0, na.rm = TRUE),
+    sum(deg_24h_vs_0h$log2FoldChange < 0, na.rm = TRUE),
+    sum(deg_24h_vs_4h$log2FoldChange < 0, na.rm = TRUE)
+  ),
+  
+  Min_log2FC = c(
+    min(deg_4h_vs_0h$log2FoldChange, na.rm = TRUE),
+    min(deg_24h_vs_0h$log2FoldChange, na.rm = TRUE),
+    min(deg_24h_vs_4h$log2FoldChange, na.rm = TRUE)
+  ),
+  
+  Mediaan_log2FC = c(
+    median(deg_4h_vs_0h$log2FoldChange, na.rm = TRUE),
+    median(deg_24h_vs_0h$log2FoldChange, na.rm = TRUE),
+    median(deg_24h_vs_4h$log2FoldChange, na.rm = TRUE)
+  ),
+  
+  Max_log2FC = c(
+    max(deg_4h_vs_0h$log2FoldChange, na.rm = TRUE),
+    max(deg_24h_vs_0h$log2FoldChange, na.rm = TRUE),
+    max(deg_24h_vs_4h$log2FoldChange, na.rm = TRUE)
+  )
+)
+
+knitr::kable(deg_stat_controle, row.names = FALSE, digits = 4)
+
+```
+
+
+```{r dap-lijsten inlezen, include=FALSE}
+
+dap_4h_vs_0h <- read.csv("../DAP_lists/DAP_4h_vs_0h.csv")
+dap_24h_vs_0h <- read.csv("../DAP_lists/DAP_24h_vs_0h.csv")
+dap_24h_vs_4h <- read.csv("../DAP_lists/DAP_24h_vs_4h.csv")
+
+```
+
+
+```{r dap statistische controle, echo=FALSE}
+
+dap_stat_controle <- data.frame(
+  Vergelijking = c("4h_vs_0h", "24h_vs_0h", "24h_vs_4h"),
+  
+  Aantal_DAPs = c(
+    nrow(dap_4h_vs_0h),
+    nrow(dap_24h_vs_0h),
+    nrow(dap_24h_vs_4h)
+  ),
+  
+  Min_adj_P_Val = c(
+    min(dap_4h_vs_0h$adj.P.Val, na.rm = TRUE),
+    min(dap_24h_vs_0h$adj.P.Val, na.rm = TRUE),
+    min(dap_24h_vs_4h$adj.P.Val, na.rm = TRUE)
+  ),
+  
+  Max_adj_P_Val = c(
+    max(dap_4h_vs_0h$adj.P.Val, na.rm = TRUE),
+    max(dap_24h_vs_0h$adj.P.Val, na.rm = TRUE),
+    max(dap_24h_vs_4h$adj.P.Val, na.rm = TRUE)
+  ),
+  
+  Aantal_adj_P_Val_boven_0.05 = c(
+    sum(dap_4h_vs_0h$adj.P.Val >= 0.05, na.rm = TRUE),
+    sum(dap_24h_vs_0h$adj.P.Val >= 0.05, na.rm = TRUE),
+    sum(dap_24h_vs_4h$adj.P.Val >= 0.05, na.rm = TRUE)
+  ),
+  
+  Upregulated = c(
+    sum(dap_4h_vs_0h$logFC > 0, na.rm = TRUE),
+    sum(dap_24h_vs_0h$logFC > 0, na.rm = TRUE),
+    sum(dap_24h_vs_4h$logFC > 0, na.rm = TRUE)
+  ),
+  
+  Downregulated = c(
+    sum(dap_4h_vs_0h$logFC < 0, na.rm = TRUE),
+    sum(dap_24h_vs_0h$logFC < 0, na.rm = TRUE),
+    sum(dap_24h_vs_4h$logFC < 0, na.rm = TRUE)
+  ),
+  
+  Min_logFC = c(
+    min(dap_4h_vs_0h$logFC, na.rm = TRUE),
+    min(dap_24h_vs_0h$logFC, na.rm = TRUE),
+    min(dap_24h_vs_4h$logFC, na.rm = TRUE)
+  ),
+  
+  Mediaan_logFC = c(
+    median(dap_4h_vs_0h$logFC, na.rm = TRUE),
+    median(dap_24h_vs_0h$logFC, na.rm = TRUE),
+    median(dap_24h_vs_4h$logFC, na.rm = TRUE)
+  ),
+  
+  Max_logFC = c(
+    max(dap_4h_vs_0h$logFC, na.rm = TRUE),
+    max(dap_24h_vs_0h$logFC, na.rm = TRUE),
+    max(dap_24h_vs_4h$logFC, na.rm = TRUE)
+  )
+)
+
+knitr::kable(dap_stat_controle, row.names = FALSE, digits = 4)
+
+```
+
+De statistische toetsen vertellen mij dat de DEG-lijsten wel gefilterd zijn op padj <0.05, maar de DAP-lijsten zijn niet gefilterd op de padj <0.05. Deze filter ga ik nog even toepassen en de output ga ik dan wegschrijven. De log fold change is niet gefilterd, misschien dat er met die filter teveel data verloren gaat. Ik ga dus eerst de lijsten proberen die op padj<0.05 gefilterd zijn in Metascape, als die data teveel is ga ik de log fold change filteren.
+
+```{r dap-lijsten filteren, eval=FALSE}
+
+dap_4h_vs_0h_sig <- dap_4h_vs_0h %>%
+  filter(adj.P.Val < 0.05)
+
+dap_24h_vs_0h_sig <- dap_24h_vs_0h %>%
+  filter(adj.P.Val < 0.05)
+
+dap_24h_vs_4h_sig <- dap_24h_vs_4h %>%
+  filter(adj.P.Val < 0.05)
+
+write.csv(
+  dap_4h_vs_0h_sig, "/students/2025-2026/Thema08/lipolyse/unpacked/proteomics/significant_DAP_4h_vs_0h.csv", row.names = FALSE
+)
+
+write.csv(
+  dap_24h_vs_0h_sig, "/students/2025-2026/Thema08/lipolyse/unpacked/proteomics/significant_DAP_24h_vs_0h.csv", row.names = FALSE
+)
+
+write.csv(
+  dap_24h_vs_4h_sig, "/students/2025-2026/Thema08/lipolyse/unpacked/proteomics/significant_DAP_24h_vs_4h.csv", row.names = FALSE
+)
+
+```
+
+```{r dap-filter controle, echo=FALSE}
+
+dap_filter_controle <- data.frame(
+  Vergelijking = c("4h_vs_0h", "24h_vs_0h", "24h_vs_4h"),
+  Voor_filtering = c(
+    nrow(dap_4h_vs_0h),
+    nrow(dap_24h_vs_0h),
+    nrow(dap_24h_vs_4h)
+  ),
+  Na_filtering = c(
+    nrow(dap_4h_vs_0h_sig),
+    nrow(dap_24h_vs_0h_sig),
+    nrow(dap_24h_vs_4h_sig)
+  ),
+  Max_adj_P_Val_na_filtering = c(
+    max(dap_4h_vs_0h_sig$adj.P.Val, na.rm = TRUE),
+    max(dap_24h_vs_0h_sig$adj.P.Val, na.rm = TRUE),
+    max(dap_24h_vs_4h_sig$adj.P.Val, na.rm = TRUE)
+  )
+)
+
+knitr::kable(dap_filter_controle, row.names = FALSE, digits = 4)
+
+```
+
+Na het toepassen van de filter padj <0.05 is te zien dat er aanzienlijk minder rijen aanwezig zijn in de DAP-lijsten. Aan de max_adj_P_val_na_filtering is te zien dat er goed gefilterd is. De gefilterde DAP- en DEG-lijsten ga ik uploaden naar Metascape per groep en met die uitkomst ga ik verder werken. 
+
+Voor Metascape moet ik per groep 1 bestand maken waarbij de DAP-genen en de DEG-genen per kolom in staan. 
+
+```{r metascape-files maken, eval=FALSE}
+
+make_metascape_file <- function(dap_genes, deg_genes, output_file) {
+  
+  dap_genes <- unique(na.omit(dap_genes))
+  deg_genes <- unique(na.omit(deg_genes))
+  
+  max_length <- max(length(dap_genes), length(deg_genes))
+  
+  dap_genes <- c(dap_genes, rep(NA, max_length - length(dap_genes)))
+  deg_genes <- c(deg_genes, rep(NA, max_length - length(deg_genes)))
+  
+  metascape_input <- data.frame(
+    DAP = dap_genes,
+    DEG = deg_genes
+  )
+  
+  write.csv(
+    metascape_input,
+    output_file,
+    row.names = FALSE,
+    quote = FALSE,
+    na = ""
+  )
+}
+
+make_metascape_file(
+  dap_genes = dap_4h_vs_0h_sig$ensembl_gene_id,
+  deg_genes = deg_4h_vs_0h$Gene,
+  output_file = "/students/2025-2026/Thema08/lipolyse/unpacked/Metascape_input/Metascape_4h_vs_0h.csv"
+)
+
+make_metascape_file(
+  dap_genes = dap_24h_vs_0h_sig$ensembl_gene_id,
+  deg_genes = deg_24h_vs_0h$Gene,
+  output_file = "/students/2025-2026/Thema08/lipolyse/unpacked/Metascape_input/Metascape_24h_vs_0h.csv"
+)
+
+make_metascape_file(
+  dap_genes = dap_24h_vs_4h_sig$ensembl_gene_id,
+  deg_genes = deg_24h_vs_4h$Gene,
+  output_file = "/students/2025-2026/Thema08/lipolyse/unpacked/Metascape_input/Metascape_24h_vs_4h.csv"
+)
+
+```
+
+```{r metascape lijst controle}
+
+metalijst_4h_vs_0h <- read.csv("/students/2025-2026/Thema08/lipolyse/unpacked/Metascape_input/Metascape_4h_vs_0h.csv")
+metalijst_24h_vs_0h <- read.csv("/students/2025-2026/Thema08/lipolyse/unpacked/Metascape_input/Metascape_24h_vs_0h.csv")
+metalijst_24h_vs_4h <- read.csv("/students/2025-2026/Thema08/lipolyse/unpacked/Metascape_input/Metascape_24h_vs_4h.csv")
+
+head(metalijst_4h_vs_0h)
+head(metalijst_24h_vs_0h)
+head(metalijst_24h_vs_4h)
+
+```
+
+De lijsten zijn goed gemaakt, dus ik ga metascape uitvoeren op de website. Deze lijsten pakt Metascape perfect, dus ik ga niet verder filteren op de log fold change. 
+
+Metascape is nu uitgevoerd, ik heb de resultaten opgeslagen en alvast kort bekeken. Het viel me op dat er veel housekeeping pathways in zitten. Housekeeping pathways hebben te maken met algemene cellulaire processen en zijn niet direct specifiek voor lipolyse. Hier ga ik morgen mee verder om te kijken of deze eruit gehaald kunnen worden zodat we alleen de pathways hebben waarin we  geïnteresseerd zijn. 
+
+#### 03-06-2026
+
+Gisteren heb ik de Metascape gerund en die resultaten opgeslagen. Ik ga nu kijken of ik de housekeeping pathways kan filteren. Het doel hiervan is om de uiteindelijke grafieken vooral pathways te tonen die inhoudelijk relevant zijn voor lipolyse, vetzuurmetabolisme, mitochondriale activiteit en thermogenese. Ik heb specifiek voor deze pathways gekozen omdat deze processen gelinkt zijn aan lipolyse. 
+
+```{r metascape resultaten inlezen}
+
+metascape_4h_vs_0h <- read_excel(
+  "/students/2025-2026/Thema08/lipolyse/unpacked/Metascape_output/comparison_4h_vs_0h/metascape_result_4hvs0h.xlsx",
+  sheet = "Enrichment"
+)
+
+metascape_24h_vs_0h <- read_excel(
+  "/students/2025-2026/Thema08/lipolyse/unpacked/Metascape_output/comparison_24h_vs_0h/metascape_result_24hvs0h.xlsx",
+  sheet = "Enrichment"
+)
+
+metascape_24h_vs_4h <- read_excel(
+  "/students/2025-2026/Thema08/lipolyse/unpacked/Metascape_output/comparison_24h_vs_4h/metascape_result_24hvs4h.xlsx",
+  sheet = "Enrichment"
+)
+
+```
+
+```{r metascape check}
+metascape_controle <- data.frame(
+  Vergelijking = c("4h_vs_0h", "24h_vs_0h", "24h_vs_4h"),
+  Aantal_rijen = c(
+    nrow(metascape_4h_vs_0h),
+    nrow(metascape_24h_vs_0h),
+    nrow(metascape_24h_vs_4h)
+  ),
+  Aantal_kolommen = c(
+    ncol(metascape_4h_vs_0h),
+    ncol(metascape_24h_vs_0h),
+    ncol(metascape_24h_vs_4h)
+  ),
+  Kolomnamen = c(
+    paste(colnames(metascape_4h_vs_0h), collapse = ", "),
+    paste(colnames(metascape_24h_vs_0h), collapse = ", "),
+    paste(colnames(metascape_24h_vs_4h), collapse = ", ")
+  )
+)
+
+knitr::kable(metascape_controle, row.names = FALSE)
+```
+
+Ik heb een controle uitgevoerd of het goed ingelezen is omdat ik nog nooit met meerdere tabbladen in een excel bestand heb gewerkt. Het aantal kolommen en de kolomnamen vertellen mij dat het goed is ingelezen. Ik heb eerst groupID nodig om te filteren, en even later heb ik ook de Log(q-value) nodig.
+
+In Metascape worden de pathways geclusterd en er bestaat veel overlap in de termen die Metascape geeft. Daarom ga ik eerst op 'summary' filteren. Ook deze ga ik weer controleren om te kijken of alle summaries apart worden opgeslagen.
+
+```{r filteren op summary}
+metascape_summary_4h_vs_0h <- metascape_4h_vs_0h %>%
+  filter(grepl("Summary", GroupID))
+
+metascape_summary_24h_vs_0h <- metascape_24h_vs_0h %>%
+  filter(grepl("Summary", GroupID))
+
+metascape_summary_24h_vs_4h <- metascape_24h_vs_4h %>%
+  filter(grepl("Summary", GroupID))
+```
+
+```{r summary controle}
+summary_controle <- data.frame(
+  Vergelijking = c("4h_vs_0h", "24h_vs_0h", "24h_vs_4h"),
+  Aantal_termen_totaal = c(
+    nrow(metascape_4h_vs_0h),
+    nrow(metascape_24h_vs_0h),
+    nrow(metascape_24h_vs_4h)
+  ),
+  Aantal_summary_termen = c(
+    nrow(metascape_summary_4h_vs_0h),
+    nrow(metascape_summary_24h_vs_0h),
+    nrow(metascape_summary_24h_vs_4h)
+  )
+)
+
+knitr::kable(summary_controle, row.names = FALSE)
+```
+
+Na het filteren op summary is te zien dat er voor elke vergelijking 20 summaries aanwezig zijn.
+
+Nu deze opgeslagen zijn, ga ik eerst relevante en housekeeping zoektermen opslaan. Dit doe ik om het filteren straks gemakkelijker te maken.
+
+```{r zoektermen opslaan}
+relevante_termen <- c(
+  "lipid",
+  "lipolysis",
+  "fatty acid",
+  "fatty acid oxidation",
+  "beta-oxidation",
+  "PPAR",
+  "adip",
+  "thermogenesis",
+  "mitochond",
+  "oxidative phosphorylation",
+  "electron transport",
+  "TCA",
+  "tricarboxylic",
+  "cholesterol",
+  "peroxisome"
+)
+
+housekeeping_termen <- c(
+  "ribosome",
+  "translation",
+  "rRNA",
+  "RNA processing",
+  "spliceosome",
+  "protein folding",
+  "proteasome",
+  "cell cycle",
+  "DNA replication",
+  "mitotic",
+  "chromosome",
+  "nucleotide",
+  "purine",
+  "pyrimidine",
+  "amino acid biosynthesis"
+)
+```
+
+Voor ik alle housekeeping pathways ga verwijderen, wil ik eerst kijken hoeveel housekeeping pathways en lipolyse gerelateerde pathways aanwezig zijn. Dit doe ik door te markeren en daarna voer ik weer een controle stap uit die kijkt hoeveel er van elk is.
+
+```{r relevante en housekeeping pathways markeren}
+metascape_summary_4h_vs_0h <- metascape_summary_4h_vs_0h %>%
+  mutate(
+    relevant_lipolyse = grepl(
+      paste(relevante_termen, collapse = "|"),
+      Description,
+      ignore.case = TRUE
+    ),
+    housekeeping = grepl(
+      paste(housekeeping_termen, collapse = "|"),
+      Description,
+      ignore.case = TRUE
+    )
+  )
+
+metascape_summary_24h_vs_0h <- metascape_summary_24h_vs_0h %>%
+  mutate(
+    relevant_lipolyse = grepl(
+      paste(relevante_termen, collapse = "|"),
+      Description,
+      ignore.case = TRUE
+    ),
+    housekeeping = grepl(
+      paste(housekeeping_termen, collapse = "|"),
+      Description,
+      ignore.case = TRUE
+    )
+  )
+
+metascape_summary_24h_vs_4h <- metascape_summary_24h_vs_4h %>%
+  mutate(
+    relevant_lipolyse = grepl(
+      paste(relevante_termen, collapse = "|"),
+      Description,
+      ignore.case = TRUE
+    ),
+    housekeeping = grepl(
+      paste(housekeeping_termen, collapse = "|"),
+      Description,
+      ignore.case = TRUE
+    )
+  )
+```
+
+```{r filter controle termen}
+filter_controle <- data.frame(
+  Vergelijking = c("4h_vs_0h", "24h_vs_0h", "24h_vs_4h"),
+  
+  Summary_termen = c(
+    nrow(metascape_summary_4h_vs_0h),
+    nrow(metascape_summary_24h_vs_0h),
+    nrow(metascape_summary_24h_vs_4h)
+  ),
+  
+  Relevante_lipolyse_termen = c(
+    sum(metascape_summary_4h_vs_0h$relevant_lipolyse),
+    sum(metascape_summary_24h_vs_0h$relevant_lipolyse),
+    sum(metascape_summary_24h_vs_4h$relevant_lipolyse)
+  ),
+  
+  Housekeeping_termen = c(
+    sum(metascape_summary_4h_vs_0h$housekeeping),
+    sum(metascape_summary_24h_vs_0h$housekeeping),
+    sum(metascape_summary_24h_vs_4h$housekeeping)
+  )
+)
+
+knitr::kable(filter_controle, row.names = FALSE)
+```
+
+Ik had verwacht dat de 20 in ieder geval verdeeld zouden worden over de lipolyse termen en housekeeping termen. Ik ga eerst even kijken naar de relevante termen en daarna kan ik nog beslissen of ik de relevante termen wil aanpassen.
+
+```{r relevante termen bekijken}
+relevante_metascape_termen <- bind_rows(
+  metascape_summary_4h_vs_0h %>%
+    filter(relevant_lipolyse == TRUE) %>%
+    mutate(Vergelijking = "4h_vs_0h"),
+  
+  metascape_summary_24h_vs_0h %>%
+    filter(relevant_lipolyse == TRUE) %>%
+    mutate(Vergelijking = "24h_vs_0h"),
+  
+  metascape_summary_24h_vs_4h %>%
+    filter(relevant_lipolyse == TRUE) %>%
+    mutate(Vergelijking = "24h_vs_4h")
+)
+
+relevante_metascape_termen <- relevante_metascape_termen %>%
+  select(
+    Vergelijking,
+    Category,
+    Description,
+    LogP,
+    `Log(q-value)`
+  ) %>%
+  arrange(Vergelijking, `Log(q-value)`)
+
+knitr::kable(relevante_metascape_termen, row.names = FALSE, digits = 3)
+```
+
+Dit zijn niet de pathways die direct betrokken zijn bij de lipolyse. Ik ga nu alle pathways bekijken die onder summary vallen en kijken of daar interessante pathways tussen zitten. Mochten die aanwezig zijn, dan breidt ik de lijst uit.
+
+```{r termen check complete summary}
+summary_terms_all <- bind_rows(
+  metascape_summary_4h_vs_0h %>%
+    mutate(Vergelijking = "4h_vs_0h"),
+  metascape_summary_24h_vs_0h %>%
+    mutate(Vergelijking = "24h_vs_0h"),
+  metascape_summary_24h_vs_4h %>%
+    mutate(Vergelijking = "24h_vs_4h")
+) %>%
+  select(
+    Vergelijking,
+    Category,
+    Description,
+    LogP,
+    `Log(q-value)`,
+    relevant_lipolyse,
+    housekeeping
+  ) %>%
+  arrange(Vergelijking, `Log(q-value)`)
+
+knitr::kable(summary_terms_all, row.names = FALSE, digits = 3)
+```
+
+In de lijst zijn nog veel pathways te zien die wel relevant zijn bij lipolyse. Ze horen er niet letterlijk bij maar tonen wel aan of er lipolyse plaats vindt. Daarom heb ik een tweede lijst gemaakt met relevante termen die uitgebreider is dan de eerste.
+
+```{r, uitgebreide lijst relevante termen}
+uitgebreide_relevante_termen <- c(
+  "lipid",
+  "lipolysis",
+  "fatty acid",
+  "fatty acyl",
+  "acyl-CoA",
+  "acyl",
+  "beta-oxidation",
+  "oxidation of fatty acids",
+  "carnitine",
+  "glycerolipid",
+  "triglyceride",
+  "cholesterol",
+  "adip",
+  "brown fat",
+  "thermogenesis",
+  "PPAR",
+  "mitochond",
+  "oxidative phosphorylation",
+  "electron transport",
+  "respiratory chain",
+  "TCA",
+  "tricarboxylic",
+  "citrate cycle",
+  "citric acid cycle",
+  "carbon metabolism",
+  "pyruvate",
+  "generation of precursor metabolites and energy",
+  "monocarboxylic acid metabolic process",
+  "dicarboxylic acid metabolic process",
+  "small molecule catabolic process",
+  "small molecule biosynthetic process",
+  "amino acid metabolic process",
+  "valine, leucine and isoleucine degradation",
+  "NADP",
+  "peroxisome"
+)
+```
+
+```{r uitgebreide gemarkeerde lijst}
+metascape_summary_4h_vs_0h_uitgebreid <- metascape_summary_4h_vs_0h %>%
+  mutate(
+    relevant_thermogenese_metabolisme_uitgebreid = grepl(
+      paste(uitgebreide_relevante_termen, collapse = "|"),
+      Description,
+      ignore.case = TRUE
+    )
+  )
+
+metascape_summary_24h_vs_0h_uitgebreid <- metascape_summary_24h_vs_0h %>%
+  mutate(
+    relevant_thermogenese_metabolisme_uitgebreid = grepl(
+      paste(uitgebreide_relevante_termen, collapse = "|"),
+      Description,
+      ignore.case = TRUE
+    )
+  )
+
+metascape_summary_24h_vs_4h_uitgebreid <- metascape_summary_24h_vs_4h %>%
+  mutate(
+    relevant_thermogenese_metabolisme_uitgebreid = grepl(
+      paste(uitgebreide_relevante_termen, collapse = "|"),
+      Description,
+      ignore.case = TRUE
+    )
+  )
+```
+
+```{r controle uitgebreide gemarkeerde lijst}
+filter_controle_uitgebreid <- data.frame(
+  Vergelijking = c("4h_vs_0h", "24h_vs_0h", "24h_vs_4h"),
+  
+  Summary_termen = c(
+    nrow(metascape_summary_4h_vs_0h_uitgebreid),
+    nrow(metascape_summary_24h_vs_0h_uitgebreid),
+    nrow(metascape_summary_24h_vs_4h_uitgebreid)
+  ),
+  
+  Uitgebreide_relevante_termen = c(
+    sum(metascape_summary_4h_vs_0h_uitgebreid$relevant_thermogenese_metabolisme_uitgebreid),
+    sum(metascape_summary_24h_vs_0h_uitgebreid$relevant_thermogenese_metabolisme_uitgebreid),
+    sum(metascape_summary_24h_vs_4h_uitgebreid$relevant_thermogenese_metabolisme_uitgebreid)
+  ),
+  
+  Housekeeping_termen = c(
+    sum(metascape_summary_4h_vs_0h_uitgebreid$housekeeping),
+    sum(metascape_summary_24h_vs_0h_uitgebreid$housekeeping),
+    sum(metascape_summary_24h_vs_4h_uitgebreid$housekeeping)
+  )
+)
+
+knitr::kable(filter_controle_uitgebreid, row.names = FALSE)
+```
+
+Na het uitbreiden van de relevante termenlijst heb ik aanzienlijk meer relevante pathways teruggekregen. Wat me wel opvalt is dat de overgang van 0h naar 4h en van 4h naar 24h meer relevante pathways heeft in vergelijking tot de overgang van 0h naar 24h. Dit kan betekenen dat de veranderingen gefaseerd verlopen, dus dat er veel tussen 0h en 4h gebeurt en tussen 4h en 24h. Maar dat de processen misschien weer afgevlakt, verschoven of minder duidelijk zijn tussen 0h en 24h. Maar het kan ook komen door mijn selectie, want ze hebben allemaal 20 summary-pathways. Ook naar de verhoudingen gekeken, bevat de vergelijking 24h vs 0h meer housekeeping pathways. Ik ga eerst even de relevante pathways bekijken en dan ga ik plotjes maken voor in het artikel.
+
+```{r relevante pathways bekijken}
+relevante_pathways_tabel <- bind_rows(
+  metascape_summary_4h_vs_0h_uitgebreid %>%
+    filter(relevant_thermogenese_metabolisme_uitgebreid == TRUE) %>%
+    mutate(Vergelijking = "4h_vs_0h"),
+  
+  metascape_summary_24h_vs_0h_uitgebreid %>%
+    filter(relevant_thermogenese_metabolisme_uitgebreid == TRUE) %>%
+    mutate(Vergelijking = "24h_vs_0h"),
+  
+  metascape_summary_24h_vs_4h_uitgebreid %>%
+    filter(relevant_thermogenese_metabolisme_uitgebreid == TRUE) %>%
+    mutate(Vergelijking = "24h_vs_4h")
+) %>%
+  select(
+    Vergelijking,
+    Category,
+    Description,
+    LogP,
+    `Log(q-value)`
+  ) %>%
+  arrange(Vergelijking, `Log(q-value)`)
+
+knitr::kable(
+  relevante_pathways_tabel,
+  row.names = FALSE,
+  digits = 3
+)
+```
+
+Ik ga deze tabel wegschrijven in een .csv bestand zodat andere groepsgenoten er ook bij kunnen.
+
+```{r resultaten wegschrijven}
+write.csv(
+  relevante_pathways_tabel,
+  "/students/2025-2026/Thema08/lipolyse/unpacked/Metascape_output/relevante_pathways_metascape.csv",
+  row.names = FALSE
+)
+```
+
+Ik ga een heatmap maken waar het per pathway en vergelijking is welke pathway waar het sterkst tot uiting komt en een venn-diagram zodat het duidelijk is welke pathways bij welke vergelijkingen overlappen. 
+
+```{r heatmap relevante pathways, echo=FALSE, fig.width=8, fig.height=5}
+heatmap_data <- relevante_pathways_tabel %>%
+  mutate(
+    enrichment_score = -`Log(q-value)`,
+    Description_clean = gsub(" - Mus musculus \\(house mouse\\)", "", Description),
+    pathway_groep = case_when(
+      grepl("mitochond|TCA|citrate cycle|electron transport|oxidative phosphorylation|protein localization to mitochondrion",
+            Description_clean, ignore.case = TRUE) ~ "Mitochondriaal / energie",
+      
+      grepl("carbon metabolism|pyruvate|precursor metabolites|NADP",
+            Description_clean, ignore.case = TRUE) ~ "Energiemetabolisme",
+      
+      grepl("amino acid|valine|leucine|isoleucine|tRNA aminoacylation",
+            Description_clean, ignore.case = TRUE) ~ "Aminozuurmetabolisme",
+      
+      grepl("acyl-CoA|dicarboxylic acid|monocarboxylic acid|fatty acid|lipid",
+            Description_clean, ignore.case = TRUE) ~ "Vetzuur / organisch zuur metabolisme",
+      
+      grepl("small molecule",
+            Description_clean, ignore.case = TRUE) ~ "Small molecule metabolism",
+      
+      TRUE ~ "Overig"
+    )
+  ) %>%
+  select(Description_clean, pathway_groep, Vergelijking, enrichment_score) %>%
+  pivot_wider(
+    names_from = Vergelijking,
+    values_from = enrichment_score,
+    values_fill = 0
+  ) %>%
+  arrange(
+    factor(
+      pathway_groep,
+      levels = c(
+        "Vetzuur / organisch zuur metabolisme",
+        "Mitochondriaal / energie",
+        "Energiemetabolisme",
+        "Aminozuurmetabolisme",
+        "Small molecule metabolism",
+        "Overig"
+      )
+    ),
+    Description_clean
+  )
+
+heatmap_matrix <- as.data.frame(heatmap_data)
+rownames(heatmap_matrix) <- heatmap_matrix$Description_clean
+
+row_annotation <- data.frame(
+  Categorie = heatmap_matrix$pathway_groep
+)
+rownames(row_annotation) <- rownames(heatmap_matrix)
+
+heatmap_matrix <- heatmap_matrix %>%
+  select(-Description_clean, -pathway_groep)
+
+pheatmap(
+  as.matrix(heatmap_matrix),
+  cluster_rows = FALSE,
+  cluster_cols = FALSE,
+  annotation_row = row_annotation,
+  main = "Relevante pathways per vergelijking",
+  angle_col = 90,
+  fontsize_row = 7,
+  fontsize_col = 9,
+  fontsize = 9,
+  treeheight_row = 0,
+  treeheight_col = 0,
+  legend = TRUE,
+  annotation_legend = TRUE
+)
+```
+Er is duidelijk verschil te zien in de heatmap bij welke pathways waar tot expressie komen en hoe hoog. Er zijn pathways die niet bij elke vergelijking aanwezig, deze zijn gemarkeerd als 0 en opgevuld met donkerblauw. Verder heb ik categorieën gemaakt voor de pathways zodat het duidelijk is welke pathway bij welke groep hoort. Dit maakt het in het artikel ook makkelijker om te filteren op belang en welke pathway specifiek voor lipolyse is en welke bij bijvoorbeeld energiemetabolisme hoort. 
+
+Ik maak nog even een venn diagram om een mooi overzicht te krijgen welke pathway bij welke vergelijking hoort en of de pathways bij meer vergelijkingen voorkomen.
+
+```{r venn voorbereiding}
+
+pathways_4h_vs_0h <- relevante_pathways_tabel %>%
+  filter(Vergelijking == "4h_vs_0h") %>%
+  pull(Description) %>%
+  unique()
+
+pathways_24h_vs_0h <- relevante_pathways_tabel %>%
+  filter(Vergelijking == "24h_vs_0h") %>%
+  pull(Description) %>%
+  unique()
+
+pathways_24h_vs_4h <- relevante_pathways_tabel %>%
+  filter(Vergelijking == "24h_vs_4h") %>%
+  pull(Description) %>%
+  unique()
+
+```
+
+```{r venn plot}
+pathway_overlap_plot <- relevante_pathways_tabel %>%
+  mutate(
+    Pathway = gsub(" - Mus musculus \\(house mouse\\)", "", Description),
+    aanwezig = TRUE,
+    pathway_groep = case_when(
+      grepl(
+        "mitochond|TCA|citrate cycle|electron transport|oxidative phosphorylation|protein localization to mitochondrion",
+        Pathway,
+        ignore.case = TRUE
+      ) ~ "Mitochondriaal / energie",
+      
+      grepl(
+        "carbon metabolism|pyruvate|precursor metabolites|NADP",
+        Pathway,
+        ignore.case = TRUE
+      ) ~ "Energiemetabolisme",
+      
+      grepl(
+        "amino acid|valine|leucine|isoleucine|tRNA aminoacylation",
+        Pathway,
+        ignore.case = TRUE
+      ) ~ "Aminozuurmetabolisme",
+      
+      grepl(
+        "acyl-CoA|dicarboxylic acid|monocarboxylic acid|fatty acid|lipid",
+        Pathway,
+        ignore.case = TRUE
+      ) ~ "Vetzuur / organisch zuur metabolisme",
+      
+      grepl(
+        "small molecule",
+        Pathway,
+        ignore.case = TRUE
+      ) ~ "Small molecule metabolism",
+      
+      TRUE ~ "Overig"
+    )
+  ) %>%
+  select(Pathway, pathway_groep, Vergelijking, aanwezig) %>%
+  distinct()
+
+pathway_info <- pathway_overlap_plot %>%
+  distinct(Pathway, pathway_groep)
+
+pathway_overlap_plot <- pathway_overlap_plot %>%
+  select(Pathway, Vergelijking, aanwezig) %>%
+  complete(
+    Pathway,
+    Vergelijking = c("4h_vs_0h", "24h_vs_0h", "24h_vs_4h"),
+    fill = list(aanwezig = FALSE)
+  ) %>%
+  left_join(pathway_info, by = "Pathway") %>%
+  group_by(Pathway) %>%
+  mutate(
+    aantal_vergelijkingen = sum(aanwezig)
+  ) %>%
+  ungroup() %>%
+  arrange(
+    factor(
+      pathway_groep,
+      levels = c(
+        "Vetzuur / organisch zuur metabolisme",
+        "Mitochondriaal / energie",
+        "Energiemetabolisme",
+        "Aminozuurmetabolisme",
+        "Small molecule metabolism",
+        "Overig"
+      )
+    ),
+    desc(aantal_vergelijkingen),
+    Pathway
+  ) %>%
+  mutate(
+    Pathway = factor(Pathway, levels = rev(unique(Pathway))),
+    Vergelijking = factor(
+      Vergelijking,
+      levels = c("4h_vs_0h", "24h_vs_0h", "24h_vs_4h")
+    ),
+    x_num = as.numeric(Vergelijking)
+  )
+
+pathway_lijnen <- pathway_overlap_plot %>%
+  filter(aanwezig == TRUE) %>%
+  group_by(Pathway) %>%
+  summarise(
+    x_start = min(x_num),
+    x_end = max(x_num),
+    .groups = "drop"
+  ) %>%
+  filter(x_start != x_end)
+
+categorie_balk <- pathway_overlap_plot %>%
+  distinct(Pathway, pathway_groep)
+
+ggplot(pathway_overlap_plot, aes(x = x_num, y = Pathway)) +
+  geom_tile(
+    data = categorie_balk,
+    aes(x = 0.55, y = Pathway, fill = pathway_groep),
+    inherit.aes = FALSE,
+    width = 0.12,
+    height = 0.8
+  ) +
+  geom_segment(
+    data = pathway_lijnen,
+    aes(
+      x = x_start,
+      xend = x_end,
+      y = Pathway,
+      yend = Pathway
+    ),
+    inherit.aes = FALSE,
+    linewidth = 0.6
+  ) +
+  geom_point(
+    aes(color = aanwezig),
+    size = 3
+  ) +
+  scale_x_continuous(
+    breaks = c(1, 2, 3),
+    labels = c("4h_vs_0h", "24h_vs_0h", "24h_vs_4h"),
+    limits = c(0.45, 3.2)
+  ) +
+  scale_color_manual(
+    values = c("FALSE" = "grey80", "TRUE" = "black"),
+    labels = c("Niet aanwezig", "Aanwezig"),
+    name = ""
+  ) +
+  labs(
+    title = "Overlap van relevante Metascape-pathways",
+    x = "Vergelijking",
+    y = "Pathway",
+    fill = "Categorie"
+  ) +
+  theme_bw() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    axis.text.y = element_text(size = 8),
+    plot.title = element_text(face = "bold"),
+    legend.position = "right",
+    panel.grid.major.y = element_line(color = "grey90"),
+    panel.grid.minor = element_blank()
+  )
+```
+
+#### 04-06-2026
+
+Toen ik mijn overlap grafiek en de heatmap wou verwerken in het artikel, kwam ik erachter dat ik de tijdspunten verkeerd heb geïnterpreteerd. A blijkt dus 24h te zijn in plaats van 0h en C is 0h in plaats van 24h. Wat ik nu opnieuw moet doen is de DEG-bestanden hernoemen, de inputbestanden voor Metascape opnieuw maken, Metascape opnieuw runnen en de grafieken opnieuw maken. 
+
+```{r DEGs opnieuw inlezen}
+
+deg_ab <- read.csv("/students/2025-2026/Thema08/lipolyse/unpacked/transcriptomics/significant_DEG_AB_rna.csv")
+deg_ac <- read.csv("/students/2025-2026/Thema08/lipolyse/unpacked/transcriptomics/significant_DEG_AC_rna.csv")
+deg_bc <- read.csv("/students/2025-2026/Thema08/lipolyse/unpacked/transcriptomics/significant_DEG_BC_rna.csv")
+
+
+correct_deg_24h_vs_4h <- deg_ab
+correct_deg_24h_vs_0h <- deg_ac
+correct_deg_4h_vs_0h  <- deg_bc
+
+```
+
+```{r}
+make_metascape_file <- function(dap_genes, deg_genes, output_file) {
+  
+  dap_genes <- unique(na.omit(dap_genes))
+  deg_genes <- unique(na.omit(deg_genes))
+  
+  max_length <- max(length(dap_genes), length(deg_genes))
+  
+  dap_genes <- c(dap_genes, rep(NA, max_length - length(dap_genes)))
+  deg_genes <- c(deg_genes, rep(NA, max_length - length(deg_genes)))
+  
+  metascape_input <- data.frame(
+    DAP = dap_genes,
+    DEG = deg_genes
+  )
+  
+  write.csv(
+    metascape_input,
+    output_file,
+    row.names = FALSE,
+    quote = FALSE,
+    na = ""
+  )
+}
+
+make_metascape_file(
+  dap_genes = dap_4h_vs_0h_sig$ensembl_gene_id,
+  deg_genes = correct_deg_4h_vs_0h$Gene,
+  output_file = "/students/2025-2026/Thema08/lipolyse/unpacked/Metascape_input/Correct_Metascape_4h_vs_0h.csv"
+)
+
+make_metascape_file(
+  dap_genes = dap_24h_vs_0h_sig$ensembl_gene_id,
+  deg_genes = correct_deg_24h_vs_0h$Gene,
+  output_file = "/students/2025-2026/Thema08/lipolyse/unpacked/Metascape_input/Correct_Metascape_24h_vs_0h.csv"
+)
+
+make_metascape_file(
+  dap_genes = dap_24h_vs_4h_sig$ensembl_gene_id,
+  deg_genes = correct_deg_24h_vs_4h$Gene,
+  output_file = "/students/2025-2026/Thema08/lipolyse/unpacked/Metascape_input/Correct_Metascape_24h_vs_4h.csv"
+)
+```
+
+```{r}
+metascape_files_controle <- data.frame(
+  Bestand = c(
+    "Metascape_4h_vs_0h.csv",
+    "Metascape_24h_vs_0h.csv",
+    "Metascape_24h_vs_4h.csv"
+  ),
+  Bestaat = c(
+    file.exists("/students/2025-2026/Thema08/lipolyse/unpacked/Metascape_input/Correct_Metascape_4h_vs_0h.csv"),
+    file.exists("/students/2025-2026/Thema08/lipolyse/unpacked/Metascape_input/Correct_Metascape_24h_vs_0h.csv"),
+    file.exists("/students/2025-2026/Thema08/lipolyse/unpacked/Metascape_input/Correct_Metascape_24h_vs_4h.csv")
+  ),
+  Aantal_DAPs = c(
+    length(unique(na.omit(dap_4h_vs_0h_sig$ensembl_gene_id))),
+    length(unique(na.omit(dap_24h_vs_0h_sig$ensembl_gene_id))),
+    length(unique(na.omit(dap_24h_vs_4h_sig$ensembl_gene_id)))
+  ),
+  Aantal_DEGs = c(
+    length(unique(na.omit(correct_deg_4h_vs_0h$Gene))),
+    length(unique(na.omit(correct_deg_24h_vs_0h$Gene))),
+    length(unique(na.omit(correct_deg_24h_vs_4h$Gene)))
+  )
+)
+
+knitr::kable(metascape_files_controle, row.names = FALSE)
+```
+Ik heb Metascape opnieuw uitgevoerd, en nu ga ik de resultaten opnieuw inlezen, filteren en aangepaste plots maken.
+
+```{r correcte metascape resultaten inlezen}
+
+metascape_4h_vs_0h_correct <- read_excel(
+  "/students/2025-2026/Thema08/lipolyse/unpacked/Metascape_output/metascape_result_4hvs_0h_correct.xlsx",
+  sheet = "Enrichment"
+)
+
+metascape_24h_vs_0h_correct <- read_excel(
+  "/students/2025-2026/Thema08/lipolyse/unpacked/Metascape_output/metascape_result_24hvs0h_correct.xlsx",
+  sheet = "Enrichment"
+)
+
+metascape_24h_vs_4h_correct <- read_excel(
+  "/students/2025-2026/Thema08/lipolyse/unpacked/Metascape_output/metascape_result_24hvs4h_correct.xlsx",
+  sheet = "Enrichment"
+)
+
+
+```
+
+Controleren of de nieuwe bestanden goed zijn gemaakt en ingelezen
+```{r correcte metascape check}
+metascape_check <- data.frame(
+  Vergelijking = c("4h_vs_0h", "24h_vs_0h", "24h_vs_4h"),
+  Aantal_rijen = c(
+    nrow(metascape_4h_vs_0h_correct),
+    nrow(metascape_24h_vs_0h_correct),
+    nrow(metascape_24h_vs_4h_correct)
+  ),
+  Aantal_kolommen = c(
+    ncol(metascape_4h_vs_0h_correct),
+    ncol(metascape_24h_vs_0h_correct),
+    ncol(metascape_24h_vs_4h_correct)
+  ),
+  Kolomnamen = c(
+    paste(colnames(metascape_4h_vs_0h_correct), collapse = ", "),
+    paste(colnames(metascape_24h_vs_0h_correct), collapse = ", "),
+    paste(colnames(metascape_24h_vs_4h_correct), collapse = ", ")
+  )
+)
+
+knitr::kable(metascape_check, row.names = FALSE)
+```
+Ze komen relatief overeen met de eerdere check voor de metascape resultaten, alleen heeft 4h_vs_0h nu 1 rij meer. 
+
+Ik ga nu weer filteren op 'summary' en dan de controle uitvoeren of het goed is gefilterd.
+
+```{r}
+metascape_summary_4h_vs_0h_correct <- metascape_4h_vs_0h_correct %>%
+  filter(grepl("Summary", GroupID))
+
+metascape_summary_24h_vs_0h_correct <- metascape_24h_vs_0h_correct %>%
+  filter(grepl("Summary", GroupID))
+
+metascape_summary_24h_vs_4h_correct <- metascape_24h_vs_4h_correct %>%
+  filter(grepl("Summary", GroupID))
+```
+
+
+```{r}
+summary_controle_correct <- data.frame(
+  Vergelijking = c("4h_vs_0h", "24h_vs_0h", "24h_vs_4h"),
+  Aantal_termen_totaal = c(
+    nrow(metascape_4h_vs_0h_correct),
+    nrow(metascape_24h_vs_0h_correct),
+    nrow(metascape_24h_vs_4h_correct)
+  ),
+  Aantal_summary_termen = c(
+    nrow(metascape_summary_4h_vs_0h_correct),
+    nrow(metascape_summary_24h_vs_0h_correct),
+    nrow(metascape_summary_24h_vs_4h_correct)
+  )
+)
+
+knitr::kable(summary_controle_correct, row.names = FALSE)
+```
+Het is opvallend dat ik nu ook weer 20 summary termen heb net als de vorige keer wanneer ik de metascape resultaten gefilterd heb op summary. 
+
+Ik ga nu gelijk filteren op de uitgebreide relevante termen lijst. 
+
+```{r}
+metascape_summary_4h_vs_0h_uitgebreid_correct <- metascape_summary_4h_vs_0h_correct %>%
+  mutate(
+    relevant_thermogenese_metabolisme_uitgebreid = grepl(
+      paste(uitgebreide_relevante_termen, collapse = "|"),
+      Description,
+      ignore.case = TRUE
+    ),
+    housekeeping = grepl(
+      paste(housekeeping_termen, collapse = "|"),
+      Description,
+      ignore.case = TRUE
+    )
+  )
+
+metascape_summary_24h_vs_0h_uitgebreid_correct <- metascape_summary_24h_vs_0h_correct %>%
+  mutate(
+    relevant_thermogenese_metabolisme_uitgebreid = grepl(
+      paste(uitgebreide_relevante_termen, collapse = "|"),
+      Description,
+      ignore.case = TRUE
+    ),
+    housekeeping = grepl(
+      paste(housekeeping_termen, collapse = "|"),
+      Description,
+      ignore.case = TRUE
+    )
+  )
+
+metascape_summary_24h_vs_4h_uitgebreid_correct <- metascape_summary_24h_vs_4h_correct %>%
+  mutate(
+    relevant_thermogenese_metabolisme_uitgebreid = grepl(
+      paste(uitgebreide_relevante_termen, collapse = "|"),
+      Description,
+      ignore.case = TRUE
+    ),
+    housekeeping = grepl(
+      paste(housekeeping_termen, collapse = "|"),
+      Description,
+      ignore.case = TRUE
+    )
+  )
+```
+
+Deze lijst ga ik weer controleren of het goed uitgevoerd is. 
+
+```{r}
+filter_controle_uitgebreid_correct <- data.frame(
+  Vergelijking = c("4h_vs_0h", "24h_vs_0h", "24h_vs_4h"),
+  Summary_termen = c(
+    nrow(metascape_summary_4h_vs_0h_uitgebreid_correct),
+    nrow(metascape_summary_24h_vs_0h_uitgebreid_correct),
+    nrow(metascape_summary_24h_vs_4h_uitgebreid_correct)
+  ),
+  Uitgebreide_relevante_termen = c(
+    sum(metascape_summary_4h_vs_0h_uitgebreid_correct$relevant_thermogenese_metabolisme_uitgebreid),
+    sum(metascape_summary_24h_vs_0h_uitgebreid_correct$relevant_thermogenese_metabolisme_uitgebreid),
+    sum(metascape_summary_24h_vs_4h_uitgebreid_correct$relevant_thermogenese_metabolisme_uitgebreid)
+  ),
+  Housekeeping_termen = c(
+    sum(metascape_summary_4h_vs_0h_uitgebreid_correct$housekeeping),
+    sum(metascape_summary_24h_vs_0h_uitgebreid_correct$housekeeping),
+    sum(metascape_summary_24h_vs_4h_uitgebreid_correct$housekeeping)
+  )
+)
+
+knitr::kable(filter_controle_uitgebreid_correct, row.names = FALSE)
+```
+De relevante termen zijn in dit geval ook hetzelfde als de eerste keer dat ik de resultaten verwerkte. Ik ga kijken of hier ook nieuwe pathways uit zijn gekomen of dat ze hetzelfde zijn. 
+
+```{r}
+relevante_pathways_tabel_correct <- bind_rows(
+  metascape_summary_4h_vs_0h_uitgebreid_correct %>%
+    filter(relevant_thermogenese_metabolisme_uitgebreid == TRUE) %>%
+    mutate(Vergelijking = "4h_vs_0h"),
+  
+  metascape_summary_24h_vs_0h_uitgebreid_correct %>%
+    filter(relevant_thermogenese_metabolisme_uitgebreid == TRUE) %>%
+    mutate(Vergelijking = "24h_vs_0h"),
+  
+  metascape_summary_24h_vs_4h_uitgebreid_correct %>%
+    filter(relevant_thermogenese_metabolisme_uitgebreid == TRUE) %>%
+    mutate(Vergelijking = "24h_vs_4h")
+) %>%
+  select(
+    Vergelijking,
+    Category,
+    Description,
+    LogP,
+    `Log(q-value)`
+  ) %>%
+  arrange(Vergelijking, `Log(q-value)`)
+
+knitr::kable(relevante_pathways_tabel_correct, row.names = FALSE, digits = 3)
+```
+Ik kan niet direct een grote verandering zien, maar misschien wordt er wel wat zichtbaar in de heatmap en/of de overlap grafiek. 
+
+```{r}
+heatmap_data_correct <- relevante_pathways_tabel_correct %>%
+  mutate(
+    enrichment_score = -`Log(q-value)`,
+    Description_clean = gsub(" - Mus musculus \\(house mouse\\)", "", Description),
+    
+    pathway_groep = case_when(
+      grepl(
+        "mitochond|TCA|citrate cycle|electron transport|oxidative phosphorylation|protein localization to mitochondrion",
+        Description_clean,
+        ignore.case = TRUE
+      ) ~ "Mitochondrial / energy",
+      
+      grepl(
+        "carbon metabolism|pyruvate|precursor metabolites|NADP",
+        Description_clean,
+        ignore.case = TRUE
+      ) ~ "Energy metabolism",
+      
+      grepl(
+        "amino acid|valine|leucine|isoleucine|tRNA aminoacylation",
+        Description_clean,
+        ignore.case = TRUE
+      ) ~ "Amino acid metabolism",
+      
+      grepl(
+        "acyl-CoA|dicarboxylic acid|monocarboxylic acid|fatty acid|lipid",
+        Description_clean,
+        ignore.case = TRUE
+      ) ~ "Fatty acid / organic acid metabolism",
+      
+      grepl(
+        "small molecule",
+        Description_clean,
+        ignore.case = TRUE
+      ) ~ "Small molecule metabolism",
+      
+      TRUE ~ "Other"
+    )
+  ) %>%
+  select(Description_clean, pathway_groep, Vergelijking, enrichment_score) %>%
+  pivot_wider(
+    names_from = Vergelijking,
+    values_from = enrichment_score,
+    values_fill = 0
+  ) %>%
+  arrange(
+    factor(
+      pathway_groep,
+      levels = c(
+        "Fatty acid / organic acid metabolism",
+        "Mitochondrial / energy",
+        "Energy metabolism",
+        "Amino acid metabolism",
+        "Small molecule metabolism",
+        "Other"
+      )
+    ),
+    Description_clean
+  )
+
+heatmap_matrix_correct <- as.data.frame(heatmap_data_correct)
+rownames(heatmap_matrix_correct) <- heatmap_matrix_correct$Description_clean
+
+row_annotation_correct <- data.frame(
+  Category = heatmap_matrix_correct$pathway_groep
+)
+rownames(row_annotation_correct) <- rownames(heatmap_matrix_correct)
+
+heatmap_matrix_correct <- heatmap_matrix_correct %>%
+  select(-Description_clean, -pathway_groep)
+
+pheatmap(
+  as.matrix(heatmap_matrix_correct),
+  cluster_rows = FALSE,
+  cluster_cols = FALSE,
+  annotation_row = row_annotation_correct,
+  main = "Pathways per comparison",
+  angle_col = 90,
+  fontsize_row = 7,
+  fontsize_col = 9,
+  fontsize = 9,
+  treeheight_row = 0,
+  treeheight_col = 0,
+  legend = TRUE,
+  annotation_legend = TRUE
+)
+```
+In de heatmap is geen duidelijk verschil.
+
+```{r}
+pathway_overlap_plot_correct <- relevante_pathways_tabel_correct %>%
+  mutate(
+    Pathway = gsub(" - Mus musculus \\(house mouse\\)", "", Description),
+    aanwezig = TRUE,
+    
+    pathway_groep = case_when(
+      grepl(
+        "mitochond|TCA|citrate cycle|electron transport|oxidative phosphorylation|protein localization to mitochondrion",
+        Pathway,
+        ignore.case = TRUE
+      ) ~ "Mitochondrial / energy",
+      
+      grepl(
+        "carbon metabolism|pyruvate|precursor metabolites|NADP",
+        Pathway,
+        ignore.case = TRUE
+      ) ~ "Energy metabolism",
+      
+      grepl(
+        "amino acid|valine|leucine|isoleucine|tRNA aminoacylation",
+        Pathway,
+        ignore.case = TRUE
+      ) ~ "Amino acid metabolism",
+      
+      grepl(
+        "acyl-CoA|dicarboxylic acid|monocarboxylic acid|fatty acid|lipid",
+        Pathway,
+        ignore.case = TRUE
+      ) ~ "Fatty acid / organic acid metabolism",
+      
+      grepl(
+        "small molecule",
+        Pathway,
+        ignore.case = TRUE
+      ) ~ "Small molecule metabolism",
+      
+      TRUE ~ "Overig"
+    )
+  ) %>%
+  select(Pathway, pathway_groep, Vergelijking, aanwezig) %>%
+  distinct()
+
+pathway_info <- pathway_overlap_plot_correct %>%
+  distinct(Pathway, pathway_groep)
+
+pathway_overlap_plot_correct <- pathway_overlap_plot_correct %>%
+  select(Pathway, Vergelijking, aanwezig) %>%
+  complete(
+    Pathway,
+    Vergelijking = c("4h_vs_0h", "24h_vs_0h", "24h_vs_4h"),
+    fill = list(aanwezig = FALSE)
+  ) %>%
+  left_join(pathway_info, by = "Pathway") %>%
+  group_by(Pathway) %>%
+  mutate(
+    aantal_vergelijkingen = sum(aanwezig)
+  ) %>%
+  ungroup() %>%
+  arrange(
+    factor(
+      pathway_groep,
+      levels = c(
+          "Fatty acid / organic acid metabolism",
+          "Mitochondrial / energy",
+          "Energy metabolism",
+          "Amino acid metabolism",
+          "Small molecule metabolism",
+          "Other"
+      )
+    ),
+    desc(aantal_vergelijkingen),
+    Pathway
+  ) %>%
+  mutate(
+    Pathway = factor(Pathway, levels = rev(unique(Pathway))),
+    Vergelijking = factor(
+      Vergelijking,
+      levels = c("4h_vs_0h", "24h_vs_0h", "24h_vs_4h")
+    ),
+    x_num = as.numeric(Vergelijking)
+  )
+
+pathway_lijnen <- pathway_overlap_plot_correct %>%
+  filter(aanwezig == TRUE) %>%
+  group_by(Pathway) %>%
+  summarise(
+    x_start = min(x_num),
+    x_end = max(x_num),
+    .groups = "drop"
+  ) %>%
+  filter(x_start != x_end)
+
+categorie_balk_correct <- pathway_overlap_plot_correct %>%
+  distinct(Pathway, pathway_groep)
+
+ggplot(pathway_overlap_plot_correct, aes(x = x_num, y = Pathway)) +
+  geom_tile(
+    data = categorie_balk_correct,
+    aes(x = 0.55, y = Pathway, fill = pathway_groep),
+    inherit.aes = FALSE,
+    width = 0.12,
+    height = 0.8
+  ) +
+  geom_segment(
+    data = pathway_lijnen,
+    aes(
+      x = x_start,
+      xend = x_end,
+      y = Pathway,
+      yend = Pathway
+    ),
+    inherit.aes = FALSE,
+    linewidth = 0.6
+  ) +
+  geom_point(
+    aes(color = aanwezig),
+    size = 3
+  ) +
+  scale_x_continuous(
+    breaks = c(1, 2, 3),
+    labels = c("4h_vs_0h", "24h_vs_0h", "24h_vs_4h"),
+    limits = c(0.45, 3.2)
+  ) +
+  scale_color_manual(
+    values = c("FALSE" = "grey80", "TRUE" = "black"),
+    labels = c("Absent", "Present"),
+    name = ""
+  ) +
+  labs(
+    title = "Shared pathways between comparisons",
+    x = "Comparison",
+    y = "Pathway",
+    fill = "Category"
+  ) +
+  theme_bw() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    axis.text.y = element_text(size = 7),
+    plot.title = element_text(face = "bold"),
+    legend.position = "right",
+    panel.grid.major.y = element_line(color = "grey90"),
+    panel.grid.minor = element_blank()
+  )
+```
+
+Omdat hier ook geen verschil in zit ga ik de pathways 1 op 1 vergelijken of er op deze manier verschillen aanwezig zijn. 
+```{r}
+cat("Aantal oude relevante pathways:", nrow(relevante_pathways_tabel), "\n")
+cat("Aantal correcte relevante pathways:", nrow(relevante_pathways_tabel_correct), "\n\n")
+
+cat("Pathways in correct maar niet in oud:\n")
+print(setdiff(
+  paste(relevante_pathways_tabel_correct$Vergelijking,
+        relevante_pathways_tabel_correct$Description),
+  paste(relevante_pathways_tabel$Vergelijking,
+        relevante_pathways_tabel$Description)
+))
+
+cat("\nPathways in oud maar niet in correct:\n")
+print(setdiff(
+  paste(relevante_pathways_tabel$Vergelijking,
+        relevante_pathways_tabel$Description),
+  paste(relevante_pathways_tabel_correct$Vergelijking,
+        relevante_pathways_tabel_correct$Description)
+))
+```
+
+Er zijn dus geen nieuwe pathways gevonden, maar wat ik nog wel kan controleren of de LogP en Log(q-value) zijn veranderd. 
+
+```{r}
+score_vergelijking <- relevante_pathways_tabel %>%
+  rename(
+    LogP_oud = LogP,
+    LogQ_oud = `Log(q-value)`
+  ) %>%
+  inner_join(
+    relevante_pathways_tabel_correct %>%
+      rename(
+        LogP_correct = LogP,
+        LogQ_correct = `Log(q-value)`
+      ),
+    by = c("Vergelijking", "Category", "Description")
+  ) %>%
+  mutate(
+    verschil_LogP = LogP_correct - LogP_oud,
+    verschil_LogQ = LogQ_correct - LogQ_oud
+  )
+
+summary(score_vergelijking$verschil_LogP)
+summary(score_vergelijking$verschil_LogQ)
+
+knitr::kable(
+  score_vergelijking %>%
+    filter(verschil_LogP != 0 | verschil_LogQ != 0),
+  row.names = FALSE,
+  digits = 3
+)
+```
+Hier is te zien dat er alleen verschil is gevonden in de vergelijking 4h vs 0h. Er is te zien dat de LogP en Log(q-value) licht is veranderd in vergelijking tot de LogP en Log(q-value) die de pathways hebben. Wat dit uiteindelijk betekent is dat ik wel de gecorrigeerde plots ga gebruiken in het artikel, maar in zijn geheel is er weinig veranderd. 
+
 ### Referenties
 
 Metascape is gebruikt voor de enrichment-analyse: [Metascape](https://metascape.org/gp/index.html#/main/step1)
 Beschrijving van de metascape tool: [Metascape artikel](https://pubmed.ncbi.nlm.nih.gov/30944313/)
+Lipolyse pathways: [Lipolyse pathways](https://www.frontiersin.org/journals/endocrinology/articles/10.3389/fendo.2023.1106544/full) 
