@@ -5,7 +5,7 @@ output: html_document
 
 ## Logboek samenvatting
 
-In dit logboek.... to be continued 
+In dit logboek beschrijf ik mijn bijdrage aan het multi-omics project over thermogene lipolyse in bruine vetcellen. Ik heb me beziggehouden met de proteomicsdata, waarbij ik stap voor stap de preprocessing heb uitgevoerd van het verkennen van de ruwe data tot log2-transformatie, normalisatie en PCA. Daarnaast heb ik literatuur gelezen om mijn analyse te onderbouwen. Met limma heb ik DAP-lijsten opgesteld om significante eiwitverschillen tussen de tijdspunten 0h, 4h en 24h te laten zien. Ook om deze lijsten te gebruiken ook gemeenschappelijke pathways te vinden met transcriptomics, hiervoor werd metascape gebruikt. Metascape deel staat in Logboeken/Logboek_Gea.Rmd
 
 
 
@@ -327,11 +327,12 @@ PCA (Principal Component Analysis) voeren we uit om grote en complexe datasets o
 ```{r}
 lfq_clean <- lfq
 lfq_clean[lfq_clean == 0] <- NA
-lfq_log <- log2(lfq_clean)
 
-lfq_log <- lfq_log[rowSums(is.na(lfq_log)) == 0, ]
+lfq_log_pca <- log2(lfq_clean)
 
-P <- t(as.matrix(lfq_log))
+
+lfq_log_pca <- lfq_log_pca[rowSums(is.na(lfq_log_pca)) == 0, ]
+P <- t(as.matrix(lfq_log_pca))
 
 P <- P[, apply(P, 2, sd) > 0]
 
@@ -348,6 +349,9 @@ loadings <- svd_result$v
 scores <- P %*% loadings
 vals <- svd_result$d^2
 ```
+
+
+
 Omdat de feature × feature matrix theoretisch symmetrisch hoort te zijn, maar kleine afrondingsfouten tijdens berekeningen numerieke instabiliteit kunnen veroorzaken, is de matrix expliciet symmetrisch gemaakt voordat de eigenwaarden werden berekend. 
 
 Met de eigenwaarden kan bekeken worden hoeveel variantie iedere principal component verklaart.
@@ -369,6 +373,8 @@ legend("topright",
        col=1:3,
        pch=19)
 ```
+
+
 Ik ben zeer tevreden met deze PCA1 vs PCA2!
 
 De eerste principal components verklaren een groot deel van de variantie in de dataset. In de PCA-scoreplot is te zien dat de samples grotendeels clusteren per tijdspunt. Dit suggereert dat de eiwitprofielen veranderen tijdens thermogene lipolyse en dat de verschillende tijdspunten biologisch van elkaar verschillen.
@@ -670,41 +676,9 @@ ensemble lag eruit en het lukte mij niet om het zelf te fixen, want ook asia en 
 
 Er staan voor mijn gevoel meer nullen in dan eerst. En ook even wat kwaliteits checks doen want ik wantrouw behoorlijk.
 
-```{r}
-# NA (missing values) check
-cat("Aantal NA vóór filtering:\n")
-sum(is.na(lfq_matrix))
-
-cat("Aantal NA na filtering:\n")
-sum(is.na(proteomics_matrix))
-
-# Percentage NA
-cat("Percentage NA vóór:\n")
-mean(is.na(lfq_matrix))
-
-cat("Percentage NA na:\n")
-mean(is.na(proteomics_matrix))
-
-# Aantal zeros check
-cat("Aantal 0 vóór:\n")
-sum(lfq_matrix == 0, na.rm = TRUE)
-
-cat("Aantal 0 na:\n")
-sum(proteomics_matrix == 0, na.rm = TRUE)
-
-# Percentage zeros
-cat("Percentage 0 vóór:\n")
-mean(lfq_matrix == 0, na.rm = TRUE)
-
-cat("Percentage 0 na:\n")
-
-```
-
-Eiwitten zonder gene match zijn weggegooid... Er zijn dus minder nullen ahahah. maar ik denk dat ML tool hier niet mee kan werken...
 
 
-
-Let op Joris als je ML gebruikt zorg dat 0 waardes okay zijn want 30% is 0 anders vervangen door kleine waardes. Ik doe het hier even voor je maar ik weet niet of dit goed genoeg is. 
+Let op Joris als je ML gebruikt zorg dat 0 waardes okay zijn want 30% is 0 anders vervangen door kleine waardes. Ik doe het hier even voor je maar ik weet niet of dit goed genoeg is. Let hier even extra op.
 
 ```{r}
 proteomics_matrix_imp <- proteomics_matrix
@@ -732,9 +706,9 @@ Ik heb weer een PVA gemaakt over de laatste stappen van ons project. Deze is te 
 * Maak een overlap-lijst met de DEG-lijsten van Joris (welke genen komen in beide voor).
 
 
-#### 30-05-2026
+#### 31-05-2026
 
-MetaScape kan geen nans hebben, maar die zijn er vanaf begin al uit en werkt met ensemble IDs
+We hebben besloten om metascape te gebruiken om de proteomics en transcriptomics te vergelijken. We doen eerst even een check voordat we DAP lijsten maken. 
 
 ```{r}
 library(limma)
@@ -820,37 +794,6 @@ write.csv(all_daps,  "All_DAPs_combined.csv", row.names = FALSE)
 ```
 DAPs!
 
-
-
-```{r}
-summary(dap_4vs0$logFC)
-```
-
-mediaan is 0??? zoek dit nog uit
-
-
-
-
-```{r}
-sig_daps[order(abs(sig_daps$logFC), decreasing = TRUE), ]
-```
-
-```{r}
-library(biomaRt)
-mart <- useEnsembl(biomart = "genes", dataset = "mmusculus_gene_ensembl", version = 108)
-
-id_mapping <- getBM(
-  attributes = c("ensembl_gene_id", "external_gene_name"),
-  filters = "ensembl_gene_id",
-  values = sig_daps$ensembl_gene_id,
-  mart = mart
-)
-
-sig_daps_named <- merge(sig_daps, id_mapping, by = "ensembl_gene_id", all.x = TRUE)
-sig_daps_named[order(abs(sig_daps_named$logFC), decreasing = TRUE), ]
-```
-
-Hier wat gene names 
 
 
 
