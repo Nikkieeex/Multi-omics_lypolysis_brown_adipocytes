@@ -3,12 +3,11 @@ title: "Logboek_Gea"
 output: html_document
 ---
 
-Auteur: Gea Bakker
-Project: *Omics, Multi-omics analysis of thermogenic lypolysis in brown adipocytes
-Repository: https://github.com/Nikkieeex/Multi-omics_lypolysis_brown_adipocytes.git 
-Wetenschappelijk artikel: https://www.sciencedirect.com/science/article/pii/S2589004225016438 
+Auteur: Gea Bakker<br>
+Project: *Omics, Multi-omics analysis of thermogenic lypolysis in brown adipocytes<br>
+Repository: https://github.com/Nikkieeex/Multi-omics_lypolysis_brown_adipocytes.git<br>
+Wetenschappelijk artikel: https://www.sciencedirect.com/science/article/pii/S2589004225016438<br>
 Groepsgenoten: Janine Postmus, Joris Deelstra, Nicole Bovenga
-Deadline: 2026-05-04
 
 ```{r libraries, include=FALSE}
 library(Rsamtools)
@@ -51,7 +50,6 @@ knitr::kable(tool_versions, row.names = FALSE)
 ### Logboek van Gea Bakker
 Dit logboek doorloopt de handelingen die uitgevoerd zijn door Gea Bakker en toont de bijdrage voor het project. Het uiteindelijke product van dit project is een wetenschappelijk artikel waarbij de data van het bestaande wetenschappelijk artikel gebruikt is. Voor ons artikel wordt er een nieuwe onderzoeksvraag bedacht die te beantwoorden is met deze data en mogelijk extra literatuur onderzoek. 
 
-#### Samenvatting wetenschappelijk artikel
 
 ### Data inlezen en exploratieve verkenning
 Voor de data verder verwerkt wordt, voer ik eerst een exploratieve data-analyse uit op de BAM-files. Hierbij lees ik de bestanden in en controleer ik de aantal reads per bestand en het aantal gemapte en ongemapte reads. 
@@ -400,6 +398,7 @@ biplot(
 )
 ```
 
+Deze PCA heeft 2 duidelijke outliers, wat mijn eerdere bevindingen bevestigt. PC1 verklaart 31.17% van de totale variatie in de dataset en PC2 verklaart 5.65%. Dit betekent dat het grootste verschil tussen de samples zichtbaar is op PC1.
 
 ```{r}
 pca_scores <- as.data.frame(pca_tools_result$rotated)
@@ -414,11 +413,7 @@ cat("Sample met de hoogste PC1-score:", max_PC1$sample, "\n")
 cat("Sample met de hoogste PC2-score:", max_PC2$sample)
 ```
 
-Dit vertelt mij dat de sample met de hoogste PC1-score sample SRR32635416 is. De sample met de hoogste PC2-score is SRR32635421, die al eerder opviel en dit bevestigt nu dat deze sample afwijkt. 
-
-Aangezien dit stukje code werkt op de output van de pca die constant verandert, komt het niet overeen met wat er besproken wordt als resultaat. Bij het kopje "18-05-2026" is de correct werkende PCA te zien waar deze resultaten in terug te vinden zijn. 
-
-Er zijn nog enkele samples die enigsins buiten de groep liggen, maar omdat deze minder sterk afwijken en niet duidelijk naar voren kwamen in de eerdere analyses, worden deze niet afzonderlijk besproken. 
+Dit vertelt mij dat de sample met de hoogste PC1-score sample SRR32635416 is. De sample met de hoogste PC2-score is SRR32635421, die al eerder opviel en dit bevestigt nu dat deze sample afwijkt.
 
 Om erachter te komen waarom deze 2 samples zo afwijkend zijn, ga ik eerst naar de counts.txt.summary kijken. Deze is samen met de count tabel gemaakt door FeatureCount. 
 
@@ -658,7 +653,7 @@ pheatmap(
 In de heatmap is te zien dat SRR32635416 een ander expressiepatroon heeft dan de meeste andere samples voor de genen die het sterkst bijdragen aan PC1. Dit ondersteunt de PCA waarbij dit sample afweek van de rest. Vooral bij meerdere genen lijkt SRR32635416 relatief hogere expressiewaarden te hebben dan de meeste andere samples.
 
 Omdat mijn PCA met de prcomp methode elke keer verandert bij het uitvoeren heb ik het op de handmatige manier geprobeerd. 
-```{r}
+```{r, eval=FALSE}
 # Data omzetten: samples in rijen, genen/features in kolommen
 P <- t(z_counts)
 
@@ -1056,7 +1051,7 @@ knitr::kable(dap_stat_controle, row.names = FALSE, digits = 4)
 
 De statistische toetsen vertellen mij dat de DEG-lijsten wel gefilterd zijn op padj <0.05, maar de DAP-lijsten zijn niet gefilterd op de padj <0.05. Deze filter ga ik nog even toepassen en de output ga ik dan wegschrijven. De log fold change is niet gefilterd, misschien dat er met die filter teveel data verloren gaat. Ik ga dus eerst de lijsten proberen die op padj<0.05 gefilterd zijn in Metascape, als die data teveel is ga ik de log fold change filteren.
 
-```{r dap-lijsten filteren, eval=FALSE}
+```{r dap-lijsten filteren, echo=FALSE}
 
 dap_4h_vs_0h_sig <- dap_4h_vs_0h %>%
   filter(adj.P.Val < 0.05)
@@ -1067,6 +1062,10 @@ dap_24h_vs_0h_sig <- dap_24h_vs_0h %>%
 dap_24h_vs_4h_sig <- dap_24h_vs_4h %>%
   filter(adj.P.Val < 0.05)
 
+
+```
+
+```{r dap-lijsten opslaan, eval=FALSE}
 write.csv(
   dap_4h_vs_0h_sig, "/students/2025-2026/Thema08/lipolyse/unpacked/proteomics/significant_DAP_4h_vs_0h.csv", row.names = FALSE
 )
@@ -1551,7 +1550,7 @@ knitr::kable(
 
 Ik ga deze tabel wegschrijven in een .csv bestand zodat andere groepsgenoten er ook bij kunnen.
 
-```{r resultaten wegschrijven}
+```{r resultaten wegschrijven, eval=FALSE}
 write.csv(
   relevante_pathways_tabel,
   "/students/2025-2026/Thema08/lipolyse/unpacked/Metascape_output/relevante_pathways_metascape.csv",
@@ -1818,7 +1817,7 @@ correct_deg_4h_vs_0h  <- deg_bc
 
 ```
 
-```{r}
+```{r, eval=FALSE}
 make_metascape_file <- function(dap_genes, deg_genes, output_file) {
   
   dap_genes <- unique(na.omit(dap_genes))
@@ -2360,6 +2359,6 @@ Hier is te zien dat er alleen verschil is gevonden in de vergelijking 4h vs 0h. 
 
 ### Referenties
 
-Metascape is gebruikt voor de enrichment-analyse: [Metascape](https://metascape.org/gp/index.html#/main/step1)
-Beschrijving van de metascape tool: [Metascape artikel](https://pubmed.ncbi.nlm.nih.gov/30944313/)
+Metascape is gebruikt voor de enrichment-analyse: [Metascape](https://metascape.org/gp/index.html#/main/step1)<br>
+Beschrijving van de metascape tool: [Metascape artikel](https://pubmed.ncbi.nlm.nih.gov/30944313/)<br>
 Lipolyse pathways: [Lipolyse pathways](https://www.frontiersin.org/journals/endocrinology/articles/10.3389/fendo.2023.1106544/full) 
