@@ -436,7 +436,6 @@ metadata <- metadata[colnames(counts), ]
 
 identical(colnames(counts), rownames(metadata))
 
-library(PCAtools)
 
 p <- pca(
   mat = as.matrix(counts),
@@ -448,9 +447,16 @@ biplot(
   p,
   colby = "group",
   lab = rownames(metadata),
+  legendPosition = "right",
+  title = "PCA van transcriptomics data",
   max.overlaps = Inf,
   labSize = 3
-)
+) +
+  labs(
+    color = "Tijdspunt"
+  ) +
+  theme( plot.title = element_text(hjust = 0.5)
+  )
 
 
 ```
